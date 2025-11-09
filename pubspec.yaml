@@ -1,0 +1,36 @@
+name: synagogue_display
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  desktop_multi_window: ^0.2.0
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0
+  path_provider: ^2.1.1
+  path: ^1.8.3
+  kosher_dart: ^2.0.18
+  intl: ^0.20.0
+  file_picker: ^6.1.1
+  provider: ^6.1.1
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+dependency_overrides:
+  lints: 5.1.1
+  
+  syncfusion_flutter_pdfviewer: ^31.2.5
+  pdf_render: ^1.4.0
