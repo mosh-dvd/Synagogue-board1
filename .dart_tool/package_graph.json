@@ -25,6 +25,14 @@
       ]
     },
     {
+      "name": "equatable",
+      "version": "2.0.7",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
       "name": "pdf_render",
       "version": "1.4.12",
       "dependencies": [
@@ -194,6 +202,16 @@
       ]
     },
     {
+      "name": "meta",
+      "version": "1.16.0",
+      "dependencies": []
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
+    },
+    {
       "name": "vector_math",
       "version": "2.2.0",
       "dependencies": []
@@ -218,11 +236,6 @@
       "dependencies": [
         "flutter"
       ]
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
-      "dependencies": []
     },
     {
       "name": "syncfusion_flutter_signaturepad",
@@ -361,11 +374,6 @@
       "dependencies": [
         "async"
       ]
-    },
-    {
-      "name": "meta",
-      "version": "1.16.0",
-      "dependencies": []
     },
     {
       "name": "leak_tracker_flutter_testing",

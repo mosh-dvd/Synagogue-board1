@@ -1,5 +1,3 @@
-// lib/data/models.dart
-
 enum MinyanDisplayMode {
   THIS_ROOM_ONLY,
   ALL
@@ -52,12 +50,10 @@ class Room {
   }
 }
 
-// --- שינויים התחילו כאן ---
-
 enum MinyanScheduleType {
-  REGULAR,      // יום חול רגיל
-  SHABBAT_DAY,  // שבת וחג (במהלך היום)
-  MOTZEI_SHABBAT // מוצאי שבת
+  REGULAR,
+  SHABBAT_DAY,
+  MOTZEI_SHABBAT
 }
 
 class Minyan {
@@ -101,8 +97,6 @@ class Minyan {
     );
   }
 }
-
-// --- שינויים הסתיימו כאן ---
 
 enum MessageType { TEXT, IMAGE, PDF }
 

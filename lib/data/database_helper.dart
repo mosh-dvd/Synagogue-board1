@@ -1,4 +1,3 @@
-// lib/data/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
@@ -15,7 +14,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 6, // שדרוג גרסה
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -38,18 +37,16 @@ class DatabaseHelper {
         side_panel_flex INTEGER NOT NULL DEFAULT 1
       )
     ''');
-
     await db.execute('''
       CREATE TABLE minyanim (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         time TEXT NOT NULL,
         room_id INTEGER NOT NULL,
-        schedule_type TEXT NOT NULL DEFAULT 'REGULAR', /* עמודה חדשה */
+        schedule_type TEXT NOT NULL DEFAULT 'REGULAR',
         FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE
       )
     ''');
-
     await db.execute('''
       CREATE TABLE settings (
         key TEXT PRIMARY KEY,
@@ -57,7 +54,6 @@ class DatabaseHelper {
       )
     ''');
     await db.insert('settings', {'key': 'location', 'value': 'ירושלים'});
-
     await db.execute('''
       CREATE TABLE messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,7 +64,6 @@ class DatabaseHelper {
         is_active INTEGER NOT NULL DEFAULT 1
       )
     ''');
-
     await db.execute('''
       CREATE TABLE message_room_link (
         message_id INTEGER,
@@ -81,41 +76,13 @@ class DatabaseHelper {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE rooms ADD COLUMN show_zmanim INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE rooms ADD COLUMN location TEXT');
-    }
-    if (oldVersion < 3) {
-      // Logic for upgrading from 2 to 3
-    }
-    if (oldVersion < 4) {
-      await db.execute('''
-        CREATE TABLE messages (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          type TEXT NOT NULL,
-          content TEXT NOT NULL,
-          duration INTEGER NOT NULL DEFAULT 10,
-          display_order INTEGER NOT NULL DEFAULT 0,
-          is_active INTEGER NOT NULL DEFAULT 1
-        )
-      ''');
-    }
-
-    if (oldVersion < 5) {
-      await db.execute('ALTER TABLE rooms ADD COLUMN side_panel_flex INTEGER NOT NULL DEFAULT 1');
-      await db.execute('''
-        CREATE TABLE message_room_link (
-          message_id INTEGER,
-          room_id INTEGER,
-          PRIMARY KEY (message_id, room_id),
-          FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
-          FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
-        )
-      ''');
-    }
-    
     if (oldVersion < 6) {
-      await db.execute("ALTER TABLE minyanim ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'REGULAR'");
+      await db.execute("DROP TABLE IF EXISTS rooms");
+      await db.execute("DROP TABLE IF EXISTS minyanim");
+      await db.execute("DROP TABLE IF EXISTS settings");
+      await db.execute("DROP TABLE IF EXISTS messages");
+      await db.execute("DROP TABLE IF EXISTS message_room_link");
+      await _onCreate(db, newVersion);
     }
   }
 
@@ -143,15 +110,6 @@ class DatabaseHelper {
     final data = room.toMap();
     data.remove('id');
     await db.update('rooms', data, where: 'id = ?', whereArgs: [room.id]);
-  }
-
-  Future<Room?> getRoomById(int id) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('rooms', where: 'id = ?', whereArgs: [id]);
-    if (maps.isNotEmpty) {
-      return Room.fromMap(maps.first);
-    }
-    return null;
   }
 
   Future<List<Room>> getRooms() async {
@@ -185,18 +143,7 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('minyanim', where: 'id = ?', whereArgs: [id]);
   }
-
-  Future<List<Minyan>> getMinyanimForRoom(int roomId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'minyanim',
-      where: 'room_id = ?',
-      whereArgs: [roomId],
-      orderBy: 'time ASC',
-    );
-    return List.generate(maps.length, (i) => Minyan.fromMap(maps[i]));
-  }
-
+  
   Future<int> insertMessage(Message message) async {
     final db = await database;
     return await db.insert('messages', message.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);

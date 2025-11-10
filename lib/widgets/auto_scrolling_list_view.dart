@@ -1,12 +1,10 @@
-// lib/widgets/auto_scrolling_list_view.dart
-// ******** תיקון טעות ההקלדה הקריטית כאן ********
 import 'dart:async';
 import 'package:flutter/material.dart';
 
 class AutoScrollingListView extends StatefulWidget {
   final List<Widget> children;
   final Duration pauseDuration;
-  final int scrollSpeed; // pixels per second
+  final int scrollSpeed;
 
   const AutoScrollingListView({
     Key? key,
@@ -37,7 +35,7 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
     super.didUpdateWidget(oldWidget);
     if (widget.children.length != oldWidget.children.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-         _isScrollingForward = true;
+        _isScrollingForward = true;
         _startOrUpdateAutoScroll();
       });
     }
@@ -52,7 +50,6 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
 
   void _startOrUpdateAutoScroll() {
     _timer?.cancel();
-    // ודא שהבקר מחובר לווידג'ט לפני שמתחילים
     if (!mounted || !_scrollController.hasClients || _scrollController.position.maxScrollExtent <= 0) {
       return;
     }
@@ -63,10 +60,8 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
     if (!mounted || !_scrollController.hasClients || _scrollController.position.maxScrollExtent <= 0) {
       return;
     }
-
     final target = _isScrollingForward ? _scrollController.position.maxScrollExtent : 0.0;
-    
-    final distance = (_scrollController.position.maxScrollExtent - _scrollController.position.minScrollExtent);
+    final distance = _scrollController.position.maxScrollExtent - _scrollController.position.minScrollExtent;
     final scrollDurationMs = (distance * 1000 / widget.scrollSpeed).round();
     
     _scrollController.animateTo(
@@ -83,6 +78,7 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.children.isEmpty) return const SizedBox.shrink();
     return ListView(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(vertical: 8),

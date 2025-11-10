@@ -1,4 +1,3 @@
-// lib/widgets/zmanim_widget.dart
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:synagogue_display/widgets/auto_scrolling_list_view.dart';
@@ -31,21 +30,15 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
   void _loadZmanim() {
     final calculatedZmanim = ZmanimHelper.calculateDailyTimes(widget.location);
     if (mounted) {
-      setState(() {
-        _zmanim = calculatedZmanim;
-      });
+      setState(() => _zmanim = calculatedZmanim);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_zmanim.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
+    if (_zmanim.isEmpty) return const SizedBox.shrink();
     const primaryTextColor = Color(0xFF212529);
     final timeColor = Colors.teal[600];
-
     final zmanimTiles = _zmanim.entries.map((entry) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
@@ -53,20 +46,11 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
           children: [
             SizedBox(
               width: 70,
-              child: Text(
-                entry.value,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: timeColor),
-                textDirection: TextDirection.ltr,
-              ),
+              child: Text(entry.value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: timeColor), textDirection: TextDirection.ltr),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                entry.key,
-                style: TextStyle(fontSize: 20, color: primaryTextColor.withOpacity(0.8)),
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(entry.key, style: TextStyle(fontSize: 20, color: primaryTextColor.withOpacity(0.8)), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -78,19 +62,14 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-            child: Text("זמני היום (${widget.location})",
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryTextColor),
-              textAlign: TextAlign.center,
-            ),
+            child: Text("זמני היום (${widget.location})", style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryTextColor), textAlign: TextAlign.center),
           ),
           const Divider(color: Colors.black12, indent: 16, endIndent: 16),
           Expanded(
