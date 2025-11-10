@@ -23,7 +23,53 @@ class MinyanimManagementTab extends StatelessWidget {
 
     return showDialog(
       context: context,
-      builder: (ctx) { /* ... קוד הדיאלוג נשאר זהה ... */ },
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('הוספת מניין חדש'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  DropdownButtonFormField<MinyanScheduleType>(
+                    decoration: const InputDecoration(labelText: 'זמן'),
+                    value: selectedType,
+                    items: MinyanScheduleType.values.map((type) {
+                      return DropdownMenuItem(value: type, child: Text(_getScheduleTypeName(type)));
+                    }).toList(),
+                    onChanged: (MinyanScheduleType? newValue) {
+                      if (newValue != null) setState(() => selectedType = newValue);
+                    },
+                  ),
+                  DropdownButtonFormField<Room>(
+                    hint: const Text('בחר חדר'),
+                    value: selectedRoom,
+                    items: rooms.map((room) {
+                      return DropdownMenuItem(value: room, child: Text(room.name));
+                    }).toList(),
+                    onChanged: (Room? newValue) => setState(() => selectedRoom = newValue),
+                  ),
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'שם התפילה (למשל, שחרית)')),
+                  TextField(controller: timeController, decoration: const InputDecoration(labelText: 'שעה (למשל, 08:00)')),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(ctx).pop()),
+            TextButton(
+              child: const Text('שמירה'),
+              onPressed: () async {
+                if (selectedRoom != null && nameController.text.isNotEmpty && timeController.text.isNotEmpty) {
+                  final newMinyan = Minyan(name: nameController.text, time: timeController.text, roomId: selectedRoom!.id!, scheduleType: selectedType);
+                  await dataProvider.addMinyan(newMinyan);
+                  Navigator.of(ctx).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -39,8 +85,7 @@ class MinyanimManagementTab extends StatelessWidget {
         itemBuilder: (context, index) {
           final minyan = minyanim[index];
           return Card(
-            // ******** התיקון כאן: הוספת מפתח ייחודי ********
-            key: ValueKey(minyan.id),
+            key: ValueKey(minyan.id), // הוספת מפתח ייחודי
             child: ListTile(
               leading: Text(minyan.time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               title: Text(minyan.name),

@@ -8,8 +8,24 @@ import 'package:synagogue_display/dialogs/message_edit_dialog.dart';
 class MessagesManagementTab extends StatelessWidget {
   const MessagesManagementTab({Key? key}) : super(key: key);
 
-  void _showEditDialog(BuildContext context, [Message? message]) { /* ... */ }
-  IconData _getIconForType(MessageType type) { /* ... */ }
+  void _showEditDialog(BuildContext context, [Message? message]) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => MessageEditDialog(message: message),
+    ).then((result) {
+      if (result == true) {
+        Provider.of<DataProvider>(context, listen: false).fetchAllData();
+      }
+    });
+  }
+
+  IconData _getIconForType(MessageType type) {
+    switch (type) {
+      case MessageType.TEXT: return Icons.text_fields;
+      case MessageType.IMAGE: return Icons.image;
+      case MessageType.PDF: return Icons.image;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,16 +38,22 @@ class MessagesManagementTab extends StatelessWidget {
         itemBuilder: (context, index) {
           final message = messages[index];
           return Card(
-            // ******** התיקון כאן: הוספת מפתח ייחודי ********
-            key: ValueKey(message.id),
+            key: ValueKey(message.id), // הוספת מפתח ייחודי
             child: ListTile(
               leading: Icon(_getIconForType(message.type)),
-              title: Text( /* ... */ ),
-              subtitle: Text( /* ... */ ),
+              title: Text(
+                message.type == MessageType.TEXT ? message.content : p.basename(message.content),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text('משך: ${message.duration} שניות | ${message.isActive ? "פעיל" : "לא פעיל"}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton( /* ... */ ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                    onPressed: () => _showEditDialog(context, message),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () async {
@@ -44,7 +66,11 @@ class MessagesManagementTab extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton( /* ... */ ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showEditDialog(context),
+        child: const Icon(Icons.add),
+        tooltip: 'הוסף הודעה',
+      ),
     );
   }
 }

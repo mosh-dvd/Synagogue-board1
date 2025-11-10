@@ -11,26 +11,82 @@ class RoomSettingsDialog extends StatefulWidget {
 }
 
 class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
-  // ... (כל המשתנים והפונקציות נשארים זהים)
+  late bool _showClock;
+  late bool _showCalendar;
+  late bool _showZmanim;
+  late MinyanDisplayMode _displayMode;
+  late double _sidePanelFlex;
+
+  @override
+  void initState() {
+    super.initState();
+    _showClock = widget.room.showClock;
+    _showCalendar = widget.room.showCalendar;
+    _showZmanim = widget.room.showZmanim;
+    _displayMode = widget.room.displayMode;
+    _sidePanelFlex = widget.room.sidePanelFlex.toDouble();
+  }
+
+  Future<void> _saveSettings() async {
+    final updatedRoom = Room(
+      id: widget.room.id,
+      name: widget.room.name,
+      showClock: _showClock,
+      showCalendar: _showCalendar,
+      showZmanim: _showZmanim,
+      displayMode: _displayMode,
+      sidePanelFlex: _sidePanelFlex.toInt(),
+    );
+    await Provider.of<DataProvider>(context, listen: false).updateRoom(updatedRoom);
+    Navigator.of(context).pop();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('הגדרות תצוגה: ${widget.room.name}'),
       content: SizedBox(
-        // ******** התיקון כאן: הגדרת רוחב קבוע לתוכן ********
-        width: 400, 
+        width: 400, // הגדרת רוחב קבוע
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ... כל התוכן של הדיאלוג נשאר זהה
+              const Text('תצוגת מניינים', style: TextStyle(fontWeight: FontWeight.bold)),
+              DropdownButtonFormField<MinyanDisplayMode>(
+                value: _displayMode,
+                items: const [
+                  DropdownMenuItem(value: MinyanDisplayMode.THIS_ROOM_ONLY, child: Text('רק מניינים המשויכים לחדר זה')),
+                  DropdownMenuItem(value: MinyanDisplayMode.ALL, child: Text('כל המניינים (מסודרים לפי שעה)')),
+                ],
+                onChanged: (MinyanDisplayMode? newValue) {
+                  if (newValue != null) setState(() => _displayMode = newValue);
+                },
+              ),
+              const Divider(height: 30),
+              const Text('ווידג\'טים נוספים', style: TextStyle(fontWeight: FontWeight.bold)),
+              SwitchListTile(title: const Text('הצג שעון דיגיטלי'), value: _showClock, onChanged: (bool value) => setState(() => _showClock = value)),
+              SwitchListTile(title: const Text('הצג תאריך עברי'), value: _showCalendar, onChanged: (bool value) => setState(() => _showCalendar = value)),
+              SwitchListTile(title: const Text('הצג זמני היום'), value: _showZmanim, onChanged: (bool value) => setState(() => _showZmanim = value)),
+              const Divider(height: 30),
+              const Text('יחס תצוגה', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('גודל עמודה צדדית: ${_sidePanelFlex.toInt()} (מתוך 5)'),
+              Slider(
+                value: _sidePanelFlex,
+                min: 1,
+                max: 4,
+                divisions: 3,
+                label: _sidePanelFlex.round().toString(),
+                onChanged: (double value) => setState(() => _sidePanelFlex = value),
+              ),
             ],
           ),
         ),
       ),
-      actions: [ /* ... כפתורים ... */ ],
+      actions: [
+        TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(context).pop()),
+        TextButton(child: const Text('שמירה'), onPressed: _saveSettings),
+      ],
     );
   }
 }

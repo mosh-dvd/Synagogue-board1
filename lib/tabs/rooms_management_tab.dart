@@ -7,8 +7,43 @@ import 'package:synagogue_display/dialogs/room_settings_dialog.dart';
 class RoomsManagementTab extends StatelessWidget {
   const RoomsManagementTab({Key? key}) : super(key: key);
 
-  void _showSettingsDialog(BuildContext context, Room room) { /* ... */ }
-  Future<void> _showAddRoomDialog(BuildContext context) async { /* ... */ }
+  void _showSettingsDialog(BuildContext context, Room room) {
+    showDialog(
+      context: context,
+      builder: (ctx) => RoomSettingsDialog(room: room),
+    ).then((_) {
+      Provider.of<DataProvider>(context, listen: false).fetchAllData();
+    });
+  }
+
+  Future<void> _showAddRoomDialog(BuildContext context) async {
+    final nameController = TextEditingController();
+    final dataProvider = Provider.of<DataProvider>(context, listen: false);
+
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('הוספת חדר חדש'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(labelText: 'שם החדר'),
+          textAlign: TextAlign.right,
+        ),
+        actions: [
+          TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(ctx).pop()),
+          TextButton(
+            child: const Text('שמירה'),
+            onPressed: () async {
+              if (nameController.text.isNotEmpty) {
+                await dataProvider.addRoom(Room(name: nameController.text));
+                Navigator.of(ctx).pop();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +56,7 @@ class RoomsManagementTab extends StatelessWidget {
         itemBuilder: (context, index) {
           final room = rooms[index];
           return Card(
-            // ******** התיקון כאן: הוספת מפתח ייחודי ********
-            key: ValueKey(room.id),
+            key: ValueKey(room.id), // הוספת מפתח ייחודי
             child: ListTile(
               title: Text(room.name),
               trailing: Row(
