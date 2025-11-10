@@ -29,40 +29,45 @@ class MessagesManagementTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dataProvider = Provider.of<DataProvider>(context);
-    final messages = dataProvider.messages;
+    final dataProvider = Provider.of<DataProvider>(context, listen: false);
 
     return Scaffold(
-      body: ListView.builder(
-        itemCount: messages.length,
-        itemBuilder: (context, index) {
-          final message = messages[index];
-          return Card(
-            key: ValueKey(message.id), // הוספת מפתח ייחודי
-            child: ListTile(
-              leading: Icon(_getIconForType(message.type)),
-              title: Text(
-                message.type == MessageType.TEXT ? message.content : p.basename(message.content),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text('משך: ${message.duration} שניות | ${message.isActive ? "פעיל" : "לא פעיל"}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                    onPressed: () => _showEditDialog(context, message),
+      body: Selector<DataProvider, List<Message>>(
+        // האזן רק לרשימת ההודעות
+        selector: (_, provider) => provider.messages,
+        builder: (context, messages, child) {
+          return ListView.builder(
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              return Card(
+                key: ValueKey(message.id),
+                child: ListTile(
+                  leading: Icon(_getIconForType(message.type)),
+                  title: Text(
+                    message.type == MessageType.TEXT ? message.content : p.basename(message.content),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      await dataProvider.deleteMessage(message.id!);
-                    },
+                  subtitle: Text('משך: ${message.duration} שניות | ${message.isActive ? "פעיל" : "לא פעיל"}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                        onPressed: () => _showEditDialog(context, message),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          await dataProvider.deleteMessage(message.id!);
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),
