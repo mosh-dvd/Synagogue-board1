@@ -23,38 +23,66 @@ class MinyanimManagementTab extends StatelessWidget {
 
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('הוספת מניין חדש'),
-        content: StatefulBuilder( /* ... קוד הדיאלוג נשאר זהה ... */ ),
-        actions: [
-          TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(ctx).pop()),
-          TextButton(
-            child: const Text('שמירה'),
-            onPressed: () async {
-              if (selectedRoom != null && nameController.text.isNotEmpty && timeController.text.isNotEmpty) {
-                final newMinyan = Minyan(name: nameController.text, time: timeController.text, roomId: selectedRoom!.id!, scheduleType: selectedType);
-                await dataProvider.addMinyan(newMinyan);
-                Navigator.of(ctx).pop();
-              }
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('הוספת מניין חדש'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    DropdownButtonFormField<MinyanScheduleType>(
+                      decoration: const InputDecoration(labelText: 'זמן'),
+                      value: selectedType,
+                      items: MinyanScheduleType.values.map((type) {
+                        return DropdownMenuItem(value: type, child: Text(_getScheduleTypeName(type)));
+                      }).toList(),
+                      onChanged: (MinyanScheduleType? newValue) {
+                        if (newValue != null) setState(() => selectedType = newValue);
+                      },
+                    ),
+                    DropdownButtonFormField<Room>(
+                      hint: const Text('בחר חדר'),
+                      value: selectedRoom,
+                      items: rooms.map((room) {
+                        return DropdownMenuItem(value: room, child: Text(room.name));
+                      }).toList(),
+                      onChanged: (Room? newValue) => setState(() => selectedRoom = newValue),
+                    ),
+                    TextField(controller: nameController, decoration: const InputDecoration(labelText: 'שם התפילה (למשל, שחרית)')),
+                    TextField(controller: timeController, decoration: const InputDecoration(labelText: 'שעה (למשל, 08:00)')),
+                  ],
+                ),
+              );
             },
           ),
-        ],
-      ),
+          actions: [
+            TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(ctx).pop()),
+            TextButton(
+              child: const Text('שמירה'),
+              onPressed: () async {
+                if (selectedRoom != null && nameController.text.isNotEmpty && timeController.text.isNotEmpty) {
+                  final newMinyan = Minyan(name: nameController.text, time: timeController.text, roomId: selectedRoom!.id!, scheduleType: selectedType);
+                  await dataProvider.addMinyan(newMinyan);
+                  Navigator.of(ctx).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // אנו עדיין צריכים גישה לכל הפרויידר עבור הדיאלוג
     final dataProvider = Provider.of<DataProvider>(context, listen: false);
     final rooms = dataProvider.rooms;
 
     return Scaffold(
       body: Selector<DataProvider, List<Minyan>>(
-        // שלב 1: בחר להאזין רק לרשימת המניינים
         selector: (_, provider) => provider.minyanim,
-        
-        // שלב 2: ה-builder ירוץ רק כאשר רשימת המניינים משתנה
         builder: (context, minyanim, child) {
           return ListView.builder(
             itemCount: minyanim.length,

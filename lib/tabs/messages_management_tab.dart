@@ -33,7 +33,6 @@ class MessagesManagementTab extends StatelessWidget {
 
     return Scaffold(
       body: Selector<DataProvider, List<Message>>(
-        // האזן רק לרשימת ההודעות
         selector: (_, provider) => provider.messages,
         builder: (context, messages, child) {
           return ListView.builder(

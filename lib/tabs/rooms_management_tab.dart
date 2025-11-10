@@ -22,7 +22,26 @@ class RoomsManagementTab extends StatelessWidget {
 
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog( /* ... קוד הדיאלוג נשאר זהה ... */ ),
+      builder: (ctx) => AlertDialog(
+        title: const Text('הוספת חדר חדש'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(labelText: 'שם החדר'),
+          textAlign: TextAlign.right,
+        ),
+        actions: [
+          TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(ctx).pop()),
+          TextButton(
+            child: const Text('שמירה'),
+            onPressed: () async {
+              if (nameController.text.isNotEmpty) {
+                await dataProvider.addRoom(Room(name: nameController.text));
+                Navigator.of(ctx).pop();
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -32,7 +51,6 @@ class RoomsManagementTab extends StatelessWidget {
 
     return Scaffold(
       body: Selector<DataProvider, List<Room>>(
-        // האזן רק לרשימת החדרים
         selector: (_, provider) => provider.rooms,
         builder: (context, rooms, child) {
           return ListView.builder(
