@@ -1,6 +1,12 @@
+// lib/display_window.dart
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+
+// התיקון מהפעם הקודמת נשאר, כדי למנוע את השגיאה המקורית
+import 'dart:ui' as ui;
+
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:intl/intl.dart';
 import 'package:synagogue_display/data/models.dart';
@@ -81,6 +87,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final dayOfWeek = DateTime.now().weekday;
     final bool showSpecialMinyanim = (dayOfWeek == DateTime.friday || dayOfWeek == DateTime.saturday);
     List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) {
+      // --- התיקון הקריטי כאן ---
+      // השוואה של scheduleType לערך מה-enum הנכון שלו.
       return (minyan.scheduleType == MinyanScheduleType.REGULAR) ? !showSpecialMinyanim : showSpecialMinyanim;
     }).toList();
     
@@ -185,7 +193,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                         minyan.time ?? '--:--',
                         style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: timeColor),
                         textAlign: TextAlign.left,
-                        textDirection: TextDirection.ltr,
+                        textDirection: ui.TextDirection.ltr,
                       ),
                     ),
                   ],
@@ -267,7 +275,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: ui.TextDirection.rtl,
         child: Column(
           children: [
             Container(

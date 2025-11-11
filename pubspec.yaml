@@ -2,8 +2,10 @@ name: synagogue_display
 description: "A new Flutter project."
 publish_to: 'none'
 version: 1.0.0+1
+
 environment:
   sdk: '>=3.2.3 <4.0.0'
+
 dependencies:
   flutter:
     sdk: flutter
@@ -17,12 +19,15 @@ dependencies:
   file_picker: ^6.1.1
   provider: ^6.1.1
   cupertino_icons: ^1.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
 flutter:
   uses-material-design: true
+
 dependency_overrides:
   lints: 5.1.1
   syncfusion_flutter_pdfviewer: ^31.2.5

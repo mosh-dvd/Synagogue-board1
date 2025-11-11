@@ -71,9 +71,7 @@ class ZmanimHelper {
     location.setElevation(cityData['elevation']!);
     location.setDateTime(DateTime.now());
 
-    // --- תיקון קריטי: שימוש נכון בבנאי וב-setter ---
-    final zmanimCalendar = ComplexZmanimCalendar();
-    zmanimCalendar.setGeoLocation(location);
+    final zmanimCalendar = ComplexZmanimCalendar.intGeoLocation(location);
 
     final jewishCalendar = JewishCalendar.fromDateTime(DateTime.now());
     jewishCalendar.inIsrael = _isCityInIsrael(city);

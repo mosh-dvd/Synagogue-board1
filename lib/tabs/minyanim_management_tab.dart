@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // <--- תיקון הייבוא הקריטי
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
 import 'package:synagogue_display/data/database_helper.dart';
