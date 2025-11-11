@@ -1,7 +1,9 @@
+// lib/tabs/messages_management_tab.dart
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
+import 'package:synagogue_display/data/database_helper.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/dialogs/message_edit_dialog.dart';
 
@@ -29,18 +31,20 @@ class MessagesManagementTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dataProvider = Provider.of<DataProvider>(context, listen: false);
+    return Consumer<DataProvider>(
+      builder: (context, dataProvider, child) {
+        // --- התיקון כאן: הסרת בלוק ה-if ---
+        // if (dataProvider.isLoading) {
+        //   return const Center(child: CircularProgressIndicator());
+        // }
+        final messages = dataProvider.messages;
 
-    return Scaffold(
-      body: Selector<DataProvider, List<Message>>(
-        selector: (_, provider) => provider.messages,
-        builder: (context, messages, child) {
-          return ListView.builder(
+        return Scaffold(
+          body: ListView.builder(
             itemCount: messages.length,
             itemBuilder: (context, index) {
               final message = messages[index];
               return Card(
-                key: ValueKey(message.id),
                 child: ListTile(
                   leading: Icon(_getIconForType(message.type)),
                   title: Text(
@@ -59,7 +63,8 @@ class MessagesManagementTab extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () async {
-                          await dataProvider.deleteMessage(message.id!);
+                          await DatabaseHelper().deleteMessage(message.id!);
+                          Provider.of<DataProvider>(context, listen: false).fetchAllData();
                         },
                       ),
                     ],
@@ -67,14 +72,14 @@ class MessagesManagementTab extends StatelessWidget {
                 ),
               );
             },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showEditDialog(context),
-        child: const Icon(Icons.add),
-        tooltip: 'הוסף הודעה',
-      ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showEditDialog(context),
+            child: const Icon(Icons.add),
+            tooltip: 'הוסף הודעה',
+          ),
+        );
+      },
     );
   }
 }

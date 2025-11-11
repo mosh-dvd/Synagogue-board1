@@ -1,3 +1,4 @@
+// lib/widgets/message_carousel_widget.dart
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -44,7 +45,8 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
   @override
   void didUpdateWidget(MessageCarouselWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.messages.map((e) => e.id).join(',') != oldWidget.messages.map((e) => e.id).join(',')) {
+    // אם רשימת ההודעות השתנתה, אתחל מחדש
+    if (widget.messages.toString() != oldWidget.messages.toString()) {
        if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -54,31 +56,42 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
 
   void _startTimer() {
     _timer?.cancel();
-    if (!mounted || widget.messages.length <= 1) return;
-    
+    if (!mounted || widget.messages.length <= 1) {
+      return; // אם אין מה להריץ, אל תתחיל טיימר
+    }
+
+    // פונקציה רקורסיבית בטוחה
     void scheduleNext() {
       if (!mounted) return;
+
       final currentIndex = _pageController.page?.round() ?? 0;
       final currentMessage = widget.messages[currentIndex % widget.messages.length];
       final durationInSeconds = currentMessage.duration > 0 ? currentMessage.duration : 10;
+
       _timer = Timer(Duration(seconds: durationInSeconds), () {
         if (!mounted) return;
+
         final nextPage = ((_pageController.page?.round() ?? 0) + 1) % widget.messages.length;
         _pageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 700),
           curve: Curves.easeInOut,
         );
+        
+        // קבע את הטיימר הבא
         scheduleNext();
       });
     }
+    
+    // התחל את הלולאה
     scheduleNext();
   }
 
   Widget _buildMessageContent(Message message) {
-    if (_mediaPath.isEmpty && message.type != MessageType.TEXT) {
+    if (_mediaPath.isEmpty && (message.type == MessageType.IMAGE || message.type == MessageType.PDF)) {
       return const Center(child: CircularProgressIndicator());
     }
+
     switch (message.type) {
       case MessageType.TEXT:
         return Container(
@@ -111,6 +124,7 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
     if (widget.messages.isEmpty) {
       return const Center(child: Text('אין הודעות פעילות', style: TextStyle(fontSize: 24, color: Colors.grey)));
     }
+
     return PageView.builder(
       controller: _pageController,
       itemCount: widget.messages.length,

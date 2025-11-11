@@ -49,7 +49,7 @@ jobs:
         run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release
-      - name: Upload Windows artifact
+      - name: Upload Windows x64 artifact
         # --- התיקון כאן ---
         uses: actions/upload-artifact@v4
         with:

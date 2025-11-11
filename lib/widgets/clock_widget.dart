@@ -1,3 +1,4 @@
+// lib/widgets/clock_widget.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -15,9 +16,9 @@ class _ClockWidgetState extends State<ClockWidget> {
 
   @override
   void initState() {
-    super.initState();
     _timeString = _formatDateTime(DateTime.now());
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _getTime());
+    super.initState();
   }
   
   @override
@@ -30,7 +31,9 @@ class _ClockWidgetState extends State<ClockWidget> {
     final DateTime now = DateTime.now();
     final String formattedDateTime = _formatDateTime(now);
     if(mounted){
-      setState(() => _timeString = formattedDateTime);
+      setState(() {
+        _timeString = formattedDateTime;
+      });
     }
   }
 
@@ -42,7 +45,7 @@ class _ClockWidgetState extends State<ClockWidget> {
   Widget build(BuildContext context) {
     return Text(
       _timeString,
-      style: const TextStyle(color: Colors.black87, fontSize: 24),
+      style: const TextStyle(color: Colors.white, fontSize: 24),
     );
   }
-}
+} 

@@ -1,6 +1,6 @@
+// lib/dialogs/global_settings_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:synagogue_display/data/data_provider.dart';
+import 'package:synagogue_display/data/database_helper.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 
 class GlobalSettingsDialog extends StatefulWidget {
@@ -17,14 +17,21 @@ class _GlobalSettingsDialogState extends State<GlobalSettingsDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedLocation = Provider.of<DataProvider>(context, listen: false).location;
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final location = await DatabaseHelper().getSetting('location');
+    setState(() {
+      _selectedLocation = location;
+    });
   }
 
   Future<void> _saveSettings() async {
     if (_selectedLocation != null) {
-      await Provider.of<DataProvider>(context, listen: false).updateLocation(_selectedLocation!);
+      await DatabaseHelper().updateSetting('location', _selectedLocation!);
     }
-    Navigator.of(context).pop(true); // החזר true כדי לסמן שהתרחש שינוי
+    Navigator.of(context).pop();
   }
 
   @override
@@ -39,10 +46,15 @@ class _GlobalSettingsDialogState extends State<GlobalSettingsDialog> {
             hint: const Text('בחר עיר לחישוב זמנים'),
             isExpanded: true,
             items: _cities.map((String city) {
-              return DropdownMenuItem<String>(value: city, child: Text(city));
+              return DropdownMenuItem<String>(
+                value: city,
+                child: Text(city),
+              );
             }).toList(),
             onChanged: (String? newValue) {
-              setState(() => _selectedLocation = newValue);
+              setState(() {
+                _selectedLocation = newValue;
+              });
             },
           ),
         ],

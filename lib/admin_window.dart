@@ -23,39 +23,52 @@ class _AdminWindowState extends State<AdminWindow> {
   @override
   void initState() {
     super.initState();
+    // --- שינוי 1: החזרת המאזין ---
+    // זו הדרך הנכונה והיציבה להבטיח שכל שינוי נתונים יגרום לשידור
     final dataProvider = Provider.of<DataProvider>(context, listen: false);
-    // המאזין חוזר! הוא יגיב לכל שינוי נקודתי ב-Provider
     dataProvider.addListener(_broadcastData);
-    
+
+    // שידור ראשוני לסנכרון
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _broadcastData();
       }
     });
   }
-
+  
   @override
   void dispose() {
     _broadcastDebouncer?.cancel();
+    // חשוב להסיר את המאזין
     Provider.of<DataProvider>(context, listen: false).removeListener(_broadcastData);
     super.dispose();
   }
   
+  // ה-Debouncer מבטיח שהשידור יקרה רק פעם אחת, גם אם יש עדכונים מהירים
   void _broadcastData() {
     if (_broadcastDebouncer?.isActive ?? false) _broadcastDebouncer!.cancel();
-    _broadcastDebouncer = Timer(const Duration(milliseconds: 100), () async {
+
+    _broadcastDebouncer = Timer(const Duration(milliseconds: 250), () async {
       if (!mounted) return;
+
       final dataProvider = Provider.of<DataProvider>(context, listen: false);
+      
       final payload = jsonEncode({
         'rooms': dataProvider.rooms.map((r) => r.toMap()).toList(),
         'minyanim': dataProvider.minyanim.map((m) => m.toMap()).toList(),
-        'messages': dataProvider.messages.where((m) => m.isActive).map((m) => m.toMap()).toList(), // שלח רק הודעות פעילות
+        'messages': dataProvider.messages.map((m) => m.toMap()).toList(),
         'message_links': dataProvider.messageLinks,
         'location': dataProvider.location,
       });
+      
       final windowIds = await DesktopMultiWindow.getAllSubWindowIds();
+      
       for (final windowId in windowIds) {
-        DesktopMultiWindow.invokeMethod(windowId, 'update_data', payload);
+        DesktopMultiWindow.invokeMethod(
+          windowId,
+          'update_data',
+          payload,
+        );
       }
     });
   }
@@ -63,8 +76,13 @@ class _AdminWindowState extends State<AdminWindow> {
   Future<void> _openAllWindows(BuildContext context) async {
     final dataProvider = Provider.of<DataProvider>(context, listen: false);
     await dataProvider.fetchAllData();
+
     for (final room in dataProvider.rooms) {
-      final arguments = jsonEncode({'title': room.name, 'room_id': room.id});
+      final arguments = jsonEncode({
+        'title': room.name,
+        'room_id': room.id,
+      });
+
       final window = await DesktopMultiWindow.createWindow(arguments);
       window
         ..setFrame(const Offset(0, 0) & const Size(1280, 720))
@@ -76,18 +94,17 @@ class _AdminWindowState extends State<AdminWindow> {
   void _showGlobalSettings(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => const GlobalSettingsDialog(),
-    ).then((saved) {
-      if (saved == true) {
-        // המאזין יטפל בשידור אוטומטית
-        final provider = Provider.of<DataProvider>(context, listen: false);
-        provider.updateLocation(provider.location);
-      }
+      builder: (context) => GlobalSettingsDialog(),
+    ).then((_) {
+      // --- שינוי 2: פישוט ---
+      // פשוט טוענים את הנתונים. המאזין שהחזרנו כבר ידאג לשידור.
+      Provider.of<DataProvider>(context, listen: false).fetchAllData();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... כל שאר קוד ה-build נשאר זהה ...
     return Directionality(
       textDirection: TextDirection.rtl,
       child: DefaultTabController(
