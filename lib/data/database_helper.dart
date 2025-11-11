@@ -14,7 +14,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 9, // שדרוג גרסה ל-9
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -38,7 +38,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // ... שאר הטבלאות כמו בקובץ הקודם ...
     await db.execute('''
       CREATE TABLE minyanim (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,14 +78,10 @@ class DatabaseHelper {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // הרצת כל השדרוגים הקודמים
     if (oldVersion < 8) {
         if (oldVersion < 2) {
           await db.execute('ALTER TABLE rooms ADD COLUMN show_zmanim INTEGER NOT NULL DEFAULT 0');
           await db.execute('ALTER TABLE rooms ADD COLUMN location TEXT');
-        }
-        if (oldVersion < 4) {
-          // יצירת טבלת הודעות בפעם הראשונה
         }
         if (oldVersion < 5) {
           await db.execute('ALTER TABLE rooms ADD COLUMN side_panel_flex INTEGER NOT NULL DEFAULT 1');
@@ -102,10 +97,7 @@ class DatabaseHelper {
         }
     }
     
-    // שדרוג מ-8 ל-9: הסרת העמודה המיותרת
     if (oldVersion < 9) {
-      // Sqflite doesn't support DROP COLUMN directly. The robust way is to rebuild the table.
-      // This is a simplified approach for now. In a production app, data would be migrated.
       await db.execute('CREATE TABLE rooms_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, show_clock INTEGER NOT NULL DEFAULT 1, show_calendar INTEGER NOT NULL DEFAULT 1, show_zmanim INTEGER NOT NULL DEFAULT 0, display_mode TEXT NOT NULL DEFAULT \'THIS_ROOM_ONLY\', active_message_panels INTEGER NOT NULL DEFAULT 1)');
       await db.execute('INSERT INTO rooms_new (id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels) SELECT id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels FROM rooms');
       await db.execute('DROP TABLE rooms');
@@ -113,7 +105,6 @@ class DatabaseHelper {
     }
   }
 
-  // ... כל שאר פונקציות ה-DB נשארות זהות לחלוטין ...
   Future<String?> getSetting(String key) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('settings', where: 'key = ?', whereArgs: [key]);
@@ -140,15 +131,6 @@ class DatabaseHelper {
     await db.update('rooms', data, where: 'id = ?', whereArgs: [room.id]);
   }
 
-  Future<Room?> getRoomById(int id) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('rooms', where: 'id = ?', whereArgs: [id]);
-    if (maps.isNotEmpty) {
-      return Room.fromMap(maps.first);
-    }
-    return null;
-  }
-
   Future<List<Room>> getRooms() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('rooms', orderBy: 'name ASC');
@@ -162,7 +144,8 @@ class DatabaseHelper {
 
   Future<void> insertMinyan(Minyan minyan) async {
     final db = await database;
-    await db.insert('minyanim', minyan.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    // --- תיקון: שימוש ב-toDbMap במקום toMap ---
+    await db.insert('minyanim', minyan.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Minyan>> getMinyanim() async {
