@@ -230,6 +230,15 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
                 }),
                 decoration: const InputDecoration(labelText: 'שייך לחלונית'),
               ),
+              
+              // --- הוספה: טקסט הסבר / אזהרה ---
+              const SizedBox(height: 8),
+              Text(
+                'ודאו שבמסכים הרלוונטיים מוגדרת פריסה התומכת בחלונית זו.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              // --- סוף ההוספה ---
+
               SwitchListTile(
                 title: const Text('פעיל'),
                 value: _isActive,

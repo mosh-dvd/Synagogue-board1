@@ -74,7 +74,6 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
 
     return Container(
       // --- שינוי: הסרת המרווח החיצוני ---
-      // margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),

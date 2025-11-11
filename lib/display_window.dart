@@ -26,7 +26,7 @@ class DisplayWindow extends StatefulWidget {
 
 class _DisplayWindowState extends State<DisplayWindow> {
   Room? _roomSettings;
-  List<Minyan> _minyanim = [];
+  Map<MinyanScheduleType, List<Minyan>> _groupedMinyanim = {};
   Map<int, List<Message>> _panelMessages = {};
   String? _location;
   bool _isLoading = true;
@@ -72,17 +72,23 @@ class _DisplayWindowState extends State<DisplayWindow> {
         ? todaysMinyanim
         : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
     
+    Map<MinyanScheduleType, List<Minyan>> categorizedMinyanim = {};
+    for (final minyan in filteredMinyanim) {
+      if (categorizedMinyanim[minyan.scheduleType] == null) {
+        categorizedMinyanim[minyan.scheduleType] = [];
+      }
+      categorizedMinyanim[minyan.scheduleType]!.add(minyan);
+    }
+
     final allMessages = (payload['messages'] as List).map((m) => Message.fromMap(m)).toList();
     final links = payload['message_links'] as Map<String, dynamic>;
     Map<int, List<Message>> categorizedMessages = {1: [], 2: [], 3: [], 4: []};
 
     for (final message in allMessages) {
       if (!message.isActive) continue;
-
       final messageLinks = links[message.id.toString()];
       final isLinkedToThisRoom = (messageLinks as List?)?.contains(widget.roomId) ?? false;
       final isGlobal = messageLinks == null || messageLinks.isEmpty;
-
       if (isGlobal || isLinkedToThisRoom) {
         if (categorizedMessages.containsKey(message.panelIndex)) {
           categorizedMessages[message.panelIndex]!.add(message);
@@ -92,107 +98,122 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
     setState(() {
       _roomSettings = currentRoomSettings;
-      _minyanim = filteredMinyanim;
+      _groupedMinyanim = categorizedMinyanim;
       _panelMessages = categorizedMessages;
       _location = payload['location'];
       _isLoading = false;
     });
   }
 
+  String _getScheduleTypeTitle(MinyanScheduleType type) {
+    switch (type) {
+      case MinyanScheduleType.REGULAR:
+        return 'תפילות ליום חול';
+      case MinyanScheduleType.SHABBAT_DAY:
+        return 'תפילות שבת וחג';
+      case MinyanScheduleType.MOTZEI_SHABBAT:
+        return 'תפילות למוצאי שבת';
+    }
+  }
+
   Widget _buildMinyanimColumn({
       required Color cardBackgroundColor,
       required Color primaryTextColor,
-      required Color headerColor,
       required Color timeColor
   }) {
+    List<Widget> minyanWidgets = [];
+    final orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
+
+    for (var type in orderedTypes) {
+      if (_groupedMinyanim.containsKey(type) && _groupedMinyanim[type]!.isNotEmpty) {
+        minyanWidgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            child: Text(
+              _getScheduleTypeTitle(type),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: primaryTextColor.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        );
+
+        for (var minyan in _groupedMinyanim[type]!) {
+          minyanWidgets.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          minyan.name,
+                          style: TextStyle(fontSize: 22, color: primaryTextColor),
+                          textAlign: TextAlign.right,
+                        ),
+                        if (minyan.roomName != null)
+                          Text(
+                            minyan.roomName!,
+                            style: TextStyle(fontSize: 16, color: primaryTextColor.withOpacity(0.6)),
+                            textAlign: TextAlign.right,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      minyan.time,
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: timeColor),
+                      textAlign: TextAlign.left,
+                      textDirection: TextDirection.ltr,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      }
+    }
+
     return Container(
-      // --- שינוי: הסרת המרווח החיצוני ---
-      // margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: cardBackgroundColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
         ],
       ),
-      child: _minyanim.isEmpty
-          ? Center(
-              child: Text('אין מניינים להיום',
-                  style: TextStyle(fontSize: 24, color: Colors.grey.shade600)))
+      child: _groupedMinyanim.isEmpty
+          ? Center(child: Text('אין מניינים להיום', style: TextStyle(fontSize: 24, color: Colors.grey.shade600)))
           : Column(
               children: [
-                Padding(
+                Padding( // No const here because of the variable color
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Text("זמני תפילות",
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: primaryTextColor)),
+                  child: Text("זמני תפילות", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryTextColor)),
                 ),
-                const Divider(
-                    color: Colors.black12, indent: 24, endIndent: 24, height: 1),
+                const Divider(color: Colors.black12, indent: 24, endIndent: 24, height: 1),
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: _minyanim.length,
-                    itemBuilder: (context, index) {
-                      final minyan = _minyanim[index];
-                      final showRoomName =
-                          _roomSettings?.displayMode == MinyanDisplayMode.ALL;
-
-                      return Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                            color: headerColor,
-                            borderRadius: BorderRadius.circular(8)),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(minyan.name,
-                                      style: TextStyle(
-                                          fontSize: 28, color: primaryTextColor),
-                                      overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (showRoomName && minyan.roomName != null)
-                                    Text(minyan.roomName!,
-                                        style: const TextStyle(
-                                            fontSize: 16, color: Colors.black54)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              minyan.time,
-                              style: TextStyle(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.bold,
-                                  color: timeColor),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  child: ListView(
+                    children: minyanWidgets,
                   ),
                 ),
               ],
             ),
     );
-  }
+  } // <--- הוספת הסוגר החסר
 
   Widget _buildMessagePanel(List<Message> messages) {
     return Container(
-      // --- שינוי: הסרת המרווח החיצוני ---
-      // margin: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade300)),
@@ -259,7 +280,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
     const cardBackgroundColor = Colors.white;
     const primaryTextColor = Color(0xFF212529);
     const headerColor = Color(0xFFE9ECEF);
-    const timeColor = Color(0xFF008080);
+    final timeColor = Colors.teal[600]!;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -276,10 +297,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                   if (_roomSettings!.showClock) const ClockWidget(),
                   Text(
                     widget.title,
-                    style: const TextStyle(
-                        fontSize: 52,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTextColor),
+                    style: const TextStyle(fontSize: 52, fontWeight: FontWeight.bold, color: primaryTextColor),
                   ),
                   if (_roomSettings!.showCalendar) const HebcalWidget(),
                 ],
@@ -290,27 +308,26 @@ class _DisplayWindowState extends State<DisplayWindow> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 2,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
                       child: _buildMinyanimColumn(
                         cardBackgroundColor: cardBackgroundColor,
                         primaryTextColor: primaryTextColor,
-                        headerColor: headerColor,
                         timeColor: timeColor,
                       ),
                     ),
                   ),
                   Expanded(
-                    flex: 8,
+                    flex: 7,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
                       child: _buildMessageLayout(),
                     ),
                   ),
                   if (_roomSettings!.showZmanim && _location != null)
                     Expanded(
-                      flex: 3,
+                      flex: 2,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
                         child: ZmanimWidget(location: _location!),
