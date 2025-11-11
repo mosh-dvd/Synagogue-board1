@@ -1,4 +1,3 @@
-// lib/widgets/zmanim_widget.dart
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:synagogue_display/widgets/auto_scrolling_list_view.dart';
@@ -74,7 +73,8 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
     }).toList();
 
     return Container(
-      margin: const EdgeInsets.all(8.0),
+      // --- שינוי: הסרת המרווח החיצוני ---
+      // margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),

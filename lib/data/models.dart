@@ -10,8 +10,7 @@ class Room {
   final bool showCalendar;
   final bool showZmanim;
   final MinyanDisplayMode displayMode;
-  final int sidePanelFlex;
-  final int activeMessagePanels; // --- הוספה ---
+  final int activeMessagePanels;
 
   Room({
     this.id,
@@ -20,8 +19,7 @@ class Room {
     this.showCalendar = true,
     this.showZmanim = false,
     this.displayMode = MinyanDisplayMode.THIS_ROOM_ONLY,
-    this.sidePanelFlex = 1,
-    this.activeMessagePanels = 1, // --- הוספה ---
+    this.activeMessagePanels = 1,
   });
 
   Map<String, dynamic> toMap() {
@@ -32,8 +30,7 @@ class Room {
       'show_calendar': showCalendar ? 1 : 0,
       'show_zmanim': showZmanim ? 1 : 0,
       'display_mode': displayMode.name,
-      'side_panel_flex': sidePanelFlex,
-      'active_message_panels': activeMessagePanels, // --- הוספה ---
+      'active_message_panels': activeMessagePanels,
     };
   }
 
@@ -48,16 +45,16 @@ class Room {
         (e) => e.name == map['display_mode'],
         orElse: () => MinyanDisplayMode.THIS_ROOM_ONLY
       ),
-      sidePanelFlex: map['side_panel_flex'] ?? 1,
-      activeMessagePanels: map['active_message_panels'] ?? 1, // --- הוספה ---
+      activeMessagePanels: map['active_message_panels'] ?? 1,
     );
   }
 }
 
+// ... שאר הקובץ (Minyan, Message) נשאר ללא שינוי ...
 enum MinyanScheduleType {
-REGULAR,      // יום חול רגיל
-SHABBAT_DAY,  // שבת וחג (במהלך היום)
-MOTZEI_SHABBAT // מוצאי שבת
+REGULAR,
+SHABBAT_DAY,
+MOTZEI_SHABBAT
 }
 
 class Minyan {
@@ -112,7 +109,7 @@ class Message {
   final int duration;
   final int displayOrder;
   final bool isActive;
-  final int panelIndex; // --- הוספה ---
+  final int panelIndex;
 
   Message({
     this.id,
@@ -121,7 +118,7 @@ class Message {
     this.duration = 10,
     this.displayOrder = 0,
     this.isActive = true,
-    this.panelIndex = 1, // --- הוספה ---
+    this.panelIndex = 1,
   });
 
   Map<String, dynamic> toMap() {
@@ -132,7 +129,7 @@ class Message {
       'duration': duration,
       'display_order': displayOrder,
       'is_active': isActive ? 1 : 0,
-      'panel_index': panelIndex, // --- הוספה ---
+      'panel_index': panelIndex,
     };
   }
 
@@ -144,7 +141,7 @@ class Message {
       duration: map['duration'],
       displayOrder: map['display_order'],
       isActive: map['is_active'] == 1,
-      panelIndex: map['panel_index'] ?? 1, // --- הוספה ---
+      panelIndex: map['panel_index'] ?? 1,
     );
   }
 }

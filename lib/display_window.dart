@@ -106,7 +106,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
       required Color timeColor
   }) {
     return Container(
-      margin: const EdgeInsets.all(8.0),
+      // --- שינוי: הסרת המרווח החיצוני ---
+      // margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: cardBackgroundColor,
         borderRadius: BorderRadius.circular(12),
@@ -190,7 +191,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   Widget _buildMessagePanel(List<Message> messages) {
     return Container(
-      margin: const EdgeInsets.all(4.0),
+      // --- שינוי: הסרת המרווח החיצוני ---
+      // margin: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade300)),
@@ -207,59 +209,52 @@ class _DisplayWindowState extends State<DisplayWindow> {
     switch (activePanels) {
       case 2:
         return Row(children: [
-          Expanded(child: _buildMessagePanel(_panelMessages[1] ?? [])),
-          Expanded(child: _buildMessagePanel(_panelMessages[2] ?? [])),
+          Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))),
+          Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
         ]);
       case 3:
         return Column(children: [
           Expanded(
+            flex: 2,
             child: Row(children: [
-              Expanded(child: _buildMessagePanel(_panelMessages[1] ?? [])),
-              Expanded(child: _buildMessagePanel(_panelMessages[2] ?? [])),
+              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))),
+              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
             ]),
           ),
-          Expanded(child: _buildMessagePanel(_panelMessages[3] ?? [])),
+          Expanded(
+            flex: 1,
+            child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))),
         ]);
       case 4:
         return Column(children: [
           Expanded(
             child: Row(children: [
-              Expanded(child: _buildMessagePanel(_panelMessages[1] ?? [])),
-              Expanded(child: _buildMessagePanel(_panelMessages[2] ?? [])),
+              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))),
+              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
             ]),
           ),
           Expanded(
             child: Row(children: [
-              Expanded(child: _buildMessagePanel(_panelMessages[3] ?? [])),
-              Expanded(child: _buildMessagePanel(_panelMessages[4] ?? [])),
+              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))),
+              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[4] ?? []))),
             ]),
           ),
         ]);
       case 1:
       default:
-        return _buildMessagePanel(_panelMessages[1] ?? []);
+        return Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF8F9FA),
-        body: Center(
-            child: Text("ממתין לנתונים ממסך הניהול...",
-                style: TextStyle(color: Colors.black54, fontSize: 24))),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
     if (_roomSettings == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF8F9FA),
-        body: Center(
-            child: Text("שגיאה: לא נמצאו הגדרות עבור חדר זה.",
-                style: TextStyle(color: Colors.red, fontSize: 32))),
-      );
+      return const Scaffold(body: Center(child: Text("שגיאה בטעינת הגדרות")));
     }
+    
     const backgroundColor = Color(0xFFF8F9FA);
     const cardBackgroundColor = Colors.white;
     const primaryTextColor = Color(0xFF212529);
@@ -291,13 +286,13 @@ class _DisplayWindowState extends State<DisplayWindow> {
               ),
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: _roomSettings!.sidePanelFlex,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
                       child: _buildMinyanimColumn(
                         cardBackgroundColor: cardBackgroundColor,
                         primaryTextColor: primaryTextColor,
@@ -305,20 +300,23 @@ class _DisplayWindowState extends State<DisplayWindow> {
                         timeColor: timeColor,
                       ),
                     ),
-                    Expanded(
-                      flex: 5,
-                      child: Container(
-                          margin: const EdgeInsets.all(4.0),
-                          child: _buildMessageLayout()
-                      ),
+                  ),
+                  Expanded(
+                    flex: 8,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: _buildMessageLayout(),
                     ),
-                    if (_roomSettings!.showZmanim && _location != null)
-                      Expanded(
-                        flex: _roomSettings!.sidePanelFlex,
+                  ),
+                  if (_roomSettings!.showZmanim && _location != null)
+                    Expanded(
+                      flex: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
                         child: ZmanimWidget(location: _location!),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           ],

@@ -15,7 +15,6 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
   late bool _showCalendar;
   late bool _showZmanim;
   late MinyanDisplayMode _displayMode;
-  late double _sidePanelFlex;
   late int _activeMessagePanels;
 
   @override
@@ -25,7 +24,6 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
     _showCalendar = widget.room.showCalendar;
     _showZmanim = widget.room.showZmanim;
     _displayMode = widget.room.displayMode;
-    _sidePanelFlex = widget.room.sidePanelFlex.toDouble();
     _activeMessagePanels = widget.room.activeMessagePanels;
   }
 
@@ -37,7 +35,6 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
       showCalendar: _showCalendar,
       showZmanim: _showZmanim,
       displayMode: _displayMode,
-      sidePanelFlex: _sidePanelFlex.toInt(),
       activeMessagePanels: _activeMessagePanels,
     );
     await DatabaseHelper().updateRoom(updatedRoom);
@@ -105,21 +102,6 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
               title: const Text('הצג זמני היום'),
               value: _showZmanim,
               onChanged: (bool value) => setState(() => _showZmanim = value),
-            ),
-            const Divider(height: 30),
-            const Text('יחס תצוגה', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('רוחב עמודות צד: ${_sidePanelFlex.toInt()} (מתוך 7)'),
-            Slider(
-              value: _sidePanelFlex,
-              min: 1,
-              max: 3,
-              divisions: 2,
-              label: _sidePanelFlex.round().toString(),
-              onChanged: (double value) {
-                setState(() {
-                  _sidePanelFlex = value;
-                });
-              },
             ),
           ],
         ),
