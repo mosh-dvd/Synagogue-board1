@@ -26,7 +26,7 @@ class DisplayWindow extends StatefulWidget {
 
 class _DisplayWindowState extends State<DisplayWindow> {
   Room? _roomSettings;
-  Map<MinyanScheduleType, List<Minyan>> _groupedMinyanim = {};
+  Map<MinyanScheduleType, Map<String, List<Minyan>>> _groupedMinyanim = {};
   Map<int, List<Message>> _panelMessages = {};
   String? _location;
   bool _isLoading = true;
@@ -72,12 +72,18 @@ class _DisplayWindowState extends State<DisplayWindow> {
         ? todaysMinyanim
         : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
     
-    Map<MinyanScheduleType, List<Minyan>> categorizedMinyanim = {};
+    Map<MinyanScheduleType, Map<String, List<Minyan>>> categorizedMinyanim = {};
     for (final minyan in filteredMinyanim) {
-      if (categorizedMinyanim[minyan.scheduleType] == null) {
-        categorizedMinyanim[minyan.scheduleType] = [];
+      final scheduleType = minyan.scheduleType;
+      final prayerName = minyan.name;
+
+      if (categorizedMinyanim[scheduleType] == null) {
+        categorizedMinyanim[scheduleType] = {};
       }
-      categorizedMinyanim[minyan.scheduleType]!.add(minyan);
+      if (categorizedMinyanim[scheduleType]![prayerName] == null) {
+        categorizedMinyanim[scheduleType]![prayerName] = [];
+      }
+      categorizedMinyanim[scheduleType]![prayerName]!.add(minyan);
     }
 
     final allMessages = (payload['messages'] as List).map((m) => Message.fromMap(m)).toList();
@@ -131,57 +137,54 @@ class _DisplayWindowState extends State<DisplayWindow> {
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Text(
               _getScheduleTypeTitle(type),
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: primaryTextColor.withOpacity(0.9),
-              ),
-              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryTextColor),
+              textAlign: TextAlign.center,
             ),
           ),
         );
 
-        for (var minyan in _groupedMinyanim[type]!) {
+        _groupedMinyanim[type]!.forEach((prayerName, minyanList) {
           minyanWidgets.add(
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          minyan.name,
-                          style: TextStyle(fontSize: 22, color: primaryTextColor),
-                          textAlign: TextAlign.right,
-                        ),
-                        if (minyan.roomName != null)
-                          Text(
-                            minyan.roomName!,
-                            style: TextStyle(fontSize: 16, color: primaryTextColor.withOpacity(0.6)),
-                            textAlign: TextAlign.right,
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 90,
-                    child: Text(
-                      minyan.time,
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: timeColor),
-                      textAlign: TextAlign.left,
-                      textDirection: TextDirection.ltr,
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Text(
+                prayerName,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryTextColor.withOpacity(0.8)),
+                textAlign: TextAlign.right,
               ),
             ),
           );
-        }
+
+          for (var minyan in minyanList) {
+            minyanWidgets.add(
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 24.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        minyan.roomName ?? 'חדר לא ידוע',
+                        style: TextStyle(fontSize: 18, color: primaryTextColor.withOpacity(0.7)),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        minyan.time,
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: timeColor),
+                        textAlign: TextAlign.left,
+                        textDirection: TextDirection.ltr,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        });
       }
     }
 
@@ -195,22 +198,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
       ),
       child: _groupedMinyanim.isEmpty
           ? Center(child: Text('אין מניינים להיום', style: TextStyle(fontSize: 24, color: Colors.grey.shade600)))
-          : Column(
-              children: [
-                Padding( // No const here because of the variable color
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Text("זמני תפילות", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryTextColor)),
-                ),
-                const Divider(color: Colors.black12, indent: 24, endIndent: 24, height: 1),
-                Expanded(
-                  child: ListView(
-                    children: minyanWidgets,
-                  ),
-                ),
-              ],
+          : ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              children: minyanWidgets,
             ),
     );
-  } // <--- הוספת הסוגר החסר
+  }
 
   Widget _buildMessagePanel(List<Message> messages) {
     return Container(

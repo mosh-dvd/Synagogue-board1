@@ -50,7 +50,6 @@ class Room {
   }
 }
 
-// ... שאר הקובץ (Minyan, Message) נשאר ללא שינוי ...
 enum MinyanScheduleType {
 REGULAR,
 SHABBAT_DAY,
@@ -74,7 +73,8 @@ class Minyan {
     this.scheduleType = MinyanScheduleType.REGULAR,
   });
 
-  Map<String, dynamic> toMap() {
+  // This map is for writing to the database, which doesn't have a roomName column
+  Map<String, dynamic> toDbMap() {
     return {
       'id': id,
       'name': name,
@@ -83,6 +83,20 @@ class Minyan {
       'schedule_type': scheduleType.name,
     };
   }
+
+  // --- הוספה: פונקציה חדשה לשליחת נתונים לחלונות ---
+  // This map is for broadcasting to display windows, and includes the roomName
+  Map<String, dynamic> toBroadcastMap() {
+    return {
+      'id': id,
+      'name': name,
+      'room_id': roomId,
+      'time': time,
+      'schedule_type': scheduleType.name,
+      'roomName': roomName,
+    };
+  }
+
 
   factory Minyan.fromMap(Map<String, dynamic> map) {
     return Minyan(

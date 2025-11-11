@@ -1,4 +1,3 @@
-// lib/admin_window.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -23,28 +22,23 @@ class _AdminWindowState extends State<AdminWindow> {
   @override
   void initState() {
     super.initState();
-    // --- שינוי 1: החזרת המאזין ---
-    // זו הדרך הנכונה והיציבה להבטיח שכל שינוי נתונים יגרום לשידור
     final dataProvider = Provider.of<DataProvider>(context, listen: false);
     dataProvider.addListener(_broadcastData);
 
-    // שידור ראשוני לסנכרון
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _broadcastData();
       }
     });
   }
-  
+
   @override
   void dispose() {
     _broadcastDebouncer?.cancel();
-    // חשוב להסיר את המאזין
     Provider.of<DataProvider>(context, listen: false).removeListener(_broadcastData);
     super.dispose();
   }
-  
-  // ה-Debouncer מבטיח שהשידור יקרה רק פעם אחת, גם אם יש עדכונים מהירים
+
   void _broadcastData() {
     if (_broadcastDebouncer?.isActive ?? false) _broadcastDebouncer!.cancel();
 
@@ -55,7 +49,8 @@ class _AdminWindowState extends State<AdminWindow> {
       
       final payload = jsonEncode({
         'rooms': dataProvider.rooms.map((r) => r.toMap()).toList(),
-        'minyanim': dataProvider.minyanim.map((m) => m.toMap()).toList(),
+        // --- שינוי קריטי: שימוש בפונקציה הנכונה ---
+        'minyanim': dataProvider.minyanim.map((m) => m.toBroadcastMap()).toList(),
         'messages': dataProvider.messages.map((m) => m.toMap()).toList(),
         'message_links': dataProvider.messageLinks,
         'location': dataProvider.location,
@@ -94,17 +89,14 @@ class _AdminWindowState extends State<AdminWindow> {
   void _showGlobalSettings(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => GlobalSettingsDialog(),
+      builder: (context) => const GlobalSettingsDialog(),
     ).then((_) {
-      // --- שינוי 2: פישוט ---
-      // פשוט טוענים את הנתונים. המאזין שהחזרנו כבר ידאג לשידור.
       Provider.of<DataProvider>(context, listen: false).fetchAllData();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... כל שאר קוד ה-build נשאר זהה ...
     return Directionality(
       textDirection: TextDirection.rtl,
       child: DefaultTabController(
