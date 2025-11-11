@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:intl/intl.dart';
 import 'package:synagogue_display/data/models.dart';
+import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:synagogue_display/widgets/clock_widget.dart';
 import 'package:synagogue_display/widgets/hebcal_widget.dart';
 import 'package:synagogue_display/widgets/zmanim_widget.dart';
@@ -50,24 +52,40 @@ class _DisplayWindowState extends State<DisplayWindow> {
   void _processPayload(Map<String, dynamic> payload) {
     if (!mounted) return;
 
-    final roomData = (payload['rooms'] as List)
-        .firstWhere((r) => r['id'] == widget.roomId, orElse: () => null);
-
+    final roomData = (payload['rooms'] as List).firstWhere((r) => r['id'] == widget.roomId, orElse: () => null);
     if (roomData == null) {
       setState(() => _isLoading = false);
       return;
     }
     final currentRoomSettings = Room.fromMap(roomData);
-    final allMinyanimRaw =
-        (payload['minyanim'] as List).map((m) => Minyan.fromMap(m)).toList();
+    final location = payload['location'] as String? ?? 'ירושלים';
+    
+    final zmanimDateTimes = ZmanimHelper.getZmanimDateTimes(location);
+    final processedMinyanim = (payload['minyanim'] as List).map((m) {
+      final minyan = Minyan.fromMap(m);
+      if (minyan.timeType == MinyanTimeType.RELATIVE && minyan.relativeZman != null) {
+        final zmanTime = zmanimDateTimes[minyan.relativeZman!];
+        if (zmanTime != null) {
+          final calculatedTime = zmanTime.add(Duration(minutes: minyan.relativeOffsetMinutes ?? 0));
+          return Minyan(
+            id: minyan.id, name: minyan.name, roomId: minyan.roomId, roomName: minyan.roomName,
+            scheduleType: minyan.scheduleType, timeType: MinyanTimeType.FIXED,
+            time: DateFormat('HH:mm').format(calculatedTime),
+          );
+        }
+      }
+      return minyan;
+    }).where((m) => m.time != null).toList();
+
 
     final dayOfWeek = DateTime.now().weekday;
-    final bool showSpecialMinyanim =
-        (dayOfWeek == DateTime.friday || dayOfWeek == DateTime.saturday);
-    List<Minyan> todaysMinyanim = allMinyanimRaw.where((minyan) {
+    final bool showSpecialMinyanim = (dayOfWeek == DateTime.friday || dayOfWeek == DateTime.saturday);
+    List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) {
       return (minyan.scheduleType == MinyanScheduleType.REGULAR) ? !showSpecialMinyanim : showSpecialMinyanim;
     }).toList();
-    todaysMinyanim.sort((a, b) => a.time.compareTo(b.time));
+    
+    todaysMinyanim.sort((a, b) => a.time!.compareTo(b.time!));
+    
     List<Minyan> filteredMinyanim = (currentRoomSettings.displayMode == MinyanDisplayMode.ALL)
         ? todaysMinyanim
         : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
@@ -76,20 +94,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
     for (final minyan in filteredMinyanim) {
       final scheduleType = minyan.scheduleType;
       final prayerName = minyan.name;
-
-      if (categorizedMinyanim[scheduleType] == null) {
-        categorizedMinyanim[scheduleType] = {};
-      }
-      if (categorizedMinyanim[scheduleType]![prayerName] == null) {
-        categorizedMinyanim[scheduleType]![prayerName] = [];
-      }
+      if (categorizedMinyanim[scheduleType] == null) categorizedMinyanim[scheduleType] = {};
+      if (categorizedMinyanim[scheduleType]![prayerName] == null) categorizedMinyanim[scheduleType]![prayerName] = [];
       categorizedMinyanim[scheduleType]![prayerName]!.add(minyan);
     }
 
     final allMessages = (payload['messages'] as List).map((m) => Message.fromMap(m)).toList();
     final links = payload['message_links'] as Map<String, dynamic>;
     Map<int, List<Message>> categorizedMessages = {1: [], 2: [], 3: [], 4: []};
-
     for (final message in allMessages) {
       if (!message.isActive) continue;
       final messageLinks = links[message.id.toString()];
@@ -106,19 +118,16 @@ class _DisplayWindowState extends State<DisplayWindow> {
       _roomSettings = currentRoomSettings;
       _groupedMinyanim = categorizedMinyanim;
       _panelMessages = categorizedMessages;
-      _location = payload['location'];
+      _location = location;
       _isLoading = false;
     });
   }
 
   String _getScheduleTypeTitle(MinyanScheduleType type) {
     switch (type) {
-      case MinyanScheduleType.REGULAR:
-        return 'תפילות ליום חול';
-      case MinyanScheduleType.SHABBAT_DAY:
-        return 'תפילות שבת וחג';
-      case MinyanScheduleType.MOTZEI_SHABBAT:
-        return 'תפילות למוצאי שבת';
+      case MinyanScheduleType.REGULAR: return 'תפילות ליום חול';
+      case MinyanScheduleType.SHABBAT_DAY: return 'תפילות שבת וחג';
+      case MinyanScheduleType.MOTZEI_SHABBAT: return 'תפילות למוצאי שבת';
     }
   }
 
@@ -150,7 +159,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
               child: Text(
                 prayerName,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryTextColor.withOpacity(0.8)),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.center,
               ),
             ),
           );
@@ -173,7 +182,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     SizedBox(
                       width: 80,
                       child: Text(
-                        minyan.time,
+                        minyan.time ?? '--:--',
                         style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: timeColor),
                         textAlign: TextAlign.left,
                         textDirection: TextDirection.ltr,
@@ -219,7 +228,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   Widget _buildMessageLayout() {
     final activePanels = _roomSettings?.activeMessagePanels ?? 1;
-
     switch (activePanels) {
       case 2:
         return Row(children: [
@@ -228,33 +236,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
         ]);
       case 3:
         return Column(children: [
-          Expanded(
-            flex: 2,
-            child: Row(children: [
-              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))),
-              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
-            ]),
-          ),
-          Expanded(
-            flex: 1,
-            child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))),
+          Expanded(flex: 2, child: Row(children: [ Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))), Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))), ])),
+          Expanded(flex: 1, child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))),
         ]);
       case 4:
         return Column(children: [
-          Expanded(
-            child: Row(children: [
-              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))),
-              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
-            ]),
-          ),
-          Expanded(
-            child: Row(children: [
-              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))),
-              Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[4] ?? []))),
-            ]),
-          ),
+          Expanded(child: Row(children: [ Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))), Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))), ])),
+          Expanded(child: Row(children: [ Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))), Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[4] ?? []))), ])),
         ]);
-      case 1:
       default:
         return Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []));
     }
@@ -288,10 +277,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (_roomSettings!.showClock) const ClockWidget(),
-                  Text(
-                    widget.title,
-                    style: const TextStyle(fontSize: 52, fontWeight: FontWeight.bold, color: primaryTextColor),
-                  ),
+                  Text(_roomSettings!.name, style: const TextStyle(fontSize: 52, fontWeight: FontWeight.bold, color: primaryTextColor)),
                   if (_roomSettings!.showCalendar) const HebcalWidget(),
                 ],
               ),
