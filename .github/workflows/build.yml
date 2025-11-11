@@ -18,7 +18,8 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '11'
+          # --- התיקון כאן: שינוי גרסת Java ל-17 ---
+          java-version: '17'
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -28,7 +29,6 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
       - name: Upload APK artifact
-        # --- התיקון כאן ---
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -49,12 +49,12 @@ jobs:
         run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release
-      - name: Upload Windows x64 artifact
-        # --- התיקון כאן ---
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/runner/Release
+          # --- התיקון כאן: הוספת x64 לנתיב ---
+          path: build/windows/x64/runner/Release
 
   # --- ג'וב לבניית גרסת לינוקס ---
   build-linux:
@@ -76,7 +76,6 @@ jobs:
       - name: Build Linux
         run: flutter build linux --release
       - name: Upload Linux artifact
-        # --- התיקון כאן ---
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
