@@ -1,3 +1,4 @@
+// lib/data/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
@@ -14,7 +15,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 10, // שדרוג גרסה ל-10
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -26,10 +27,15 @@ class DatabaseHelper {
   }
 
   static Future<void> _onCreate(Database db, int version) async {
-    // ... קוד של onCreate של rooms ו-settings ...
     await db.execute('''
       CREATE TABLE rooms (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, show_clock INTEGER NOT NULL DEFAULT 1, show_calendar INTEGER NOT NULL DEFAULT 1, show_zmanim INTEGER NOT NULL DEFAULT 0, display_mode TEXT NOT NULL DEFAULT 'THIS_ROOM_ONLY', active_message_panels INTEGER NOT NULL DEFAULT 1
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        show_clock INTEGER NOT NULL DEFAULT 1,
+        show_calendar INTEGER NOT NULL DEFAULT 1,
+        show_zmanim INTEGER NOT NULL DEFAULT 0,
+        display_mode TEXT NOT NULL DEFAULT 'THIS_ROOM_ONLY',
+        active_message_panels INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -39,16 +45,14 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         room_id INTEGER NOT NULL,
         schedule_type TEXT NOT NULL DEFAULT 'REGULAR',
-        -- שדות חדשים
         time_type TEXT NOT NULL DEFAULT 'FIXED',
-        time TEXT, -- יכול להיות NULL
+        time TEXT,
         relative_zman TEXT,
         relative_offset_minutes INTEGER,
         FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE
       )
     ''');
     
-    // ... שאר קוד onCreate ...
     await db.execute('''CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)''');
     await db.insert('settings', {'key': 'location', 'value': 'ירושלים'});
     await db.execute('''CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, content TEXT NOT NULL, duration INTEGER NOT NULL DEFAULT 10, display_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, panel_index INTEGER NOT NULL DEFAULT 1)''');
@@ -57,51 +61,66 @@ class DatabaseHelper {
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 9) {
-      // הרצת שדרוגים ישנים
+      if (oldVersion < 2) { await db.execute('ALTER TABLE rooms ADD COLUMN show_zmanim INTEGER NOT NULL DEFAULT 0'); }
+      if (oldVersion < 5) { await db.execute('ALTER TABLE rooms ADD COLUMN side_panel_flex INTEGER NOT NULL DEFAULT 1'); }
+      if (oldVersion < 6) { await db.execute("ALTER TABLE minyanim ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'REGULAR'"); }
+      if (oldVersion < 7) { await db.execute("ALTER TABLE rooms ADD COLUMN active_message_panels INTEGER NOT NULL DEFAULT 1"); }
+      if (oldVersion < 8) { await db.execute("ALTER TABLE messages ADD COLUMN panel_index INTEGER NOT NULL DEFAULT 1"); }
     }
     
+    if (oldVersion < 9) {
+      await db.execute('CREATE TABLE rooms_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, show_clock INTEGER NOT NULL DEFAULT 1, show_calendar INTEGER NOT NULL DEFAULT 1, show_zmanim INTEGER NOT NULL DEFAULT 0, display_mode TEXT NOT NULL DEFAULT \'THIS_ROOM_ONLY\', active_message_panels INTEGER NOT NULL DEFAULT 1)');
+      await db.execute('INSERT INTO rooms_new (id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels) SELECT id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels FROM rooms');
+      await db.execute('DROP TABLE rooms');
+      await db.execute('ALTER TABLE rooms_new RENAME TO rooms');
+    }
+
     if (oldVersion < 10) {
-      // במקום ALTER, נבנה מחדש את הטבלה כדי לתמוך ב-NULL
       await db.execute('CREATE TABLE minyanim_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, room_id INTEGER NOT NULL, schedule_type TEXT NOT NULL DEFAULT \'REGULAR\', time_type TEXT NOT NULL DEFAULT \'FIXED\', time TEXT, relative_zman TEXT, relative_offset_minutes INTEGER)');
-      // העברת נתונים ישנים
       await db.execute('INSERT INTO minyanim_new (id, name, room_id, schedule_type, time) SELECT id, name, room_id, schedule_type, time FROM minyanim');
       await db.execute('DROP TABLE minyanim');
       await db.execute('ALTER TABLE minyanim_new RENAME TO minyanim');
     }
   }
 
-  // ... שאר פונקציות ה-DB ...
   Future<String?> getSetting(String key) async {
     final db = await database;
     final maps = await db.query('settings', where: 'key = ?', whereArgs: [key]);
     return maps.isNotEmpty ? maps.first['value'] as String? : null;
   }
+
   Future<void> updateSetting(String key, String value) async {
     final db = await database;
     await db.insert('settings', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
   }
+
   Future<void> insertRoom(Room room) async {
     final db = await database;
     await db.insert('rooms', room.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
+
   Future<void> updateRoom(Room room) async {
     final db = await database;
     final data = room.toMap(); data.remove('id');
     await db.update('rooms', data, where: 'id = ?', whereArgs: [room.id]);
   }
+
   Future<List<Room>> getRooms() async {
     final db = await database;
     final maps = await db.query('rooms', orderBy: 'name ASC');
     return List.generate(maps.length, (i) => Room.fromMap(maps[i]));
   }
+
   Future<void> deleteRoom(int id) async {
     final db = await database;
     await db.delete('rooms', where: 'id = ?', whereArgs: [id]);
   }
+
   Future<void> insertMinyan(Minyan minyan) async {
     final db = await database;
     await db.insert('minyanim', minyan.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
+
   Future<List<Minyan>> getMinyanim() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
@@ -112,28 +131,34 @@ class DatabaseHelper {
     ''');
     return List.generate(maps.length, (i) => Minyan.fromMap(maps[i]));
   }
+
   Future<void> deleteMinyan(int id) async {
     final db = await database;
     await db.delete('minyanim', where: 'id = ?', whereArgs: [id]);
   }
+
   Future<int> insertMessage(Message message) async {
     final db = await database;
     return await db.insert('messages', message.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
+
   Future<void> updateMessage(Message message) async {
     final db = await database;
     final data = message.toMap(); data.remove('id');
     await db.update('messages', data, where: 'id = ?', whereArgs: [message.id]);
   }
+
   Future<void> deleteMessage(int id) async {
     final db = await database;
     await db.delete('messages', where: 'id = ?', whereArgs: [id]);
   }
+
   Future<List<Message>> getMessages({bool activeOnly = false}) async {
     final db = await database;
     final maps = await db.query('messages', where: activeOnly ? 'is_active = 1' : null, orderBy: 'display_order ASC, id ASC');
     return List.generate(maps.length, (i) => Message.fromMap(maps[i]));
   }
+
   Future<void> linkMessageToRooms(int messageId, List<int> roomIds) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -143,11 +168,13 @@ class DatabaseHelper {
       }
     });
   }
+
   Future<List<int>> getLinkedRoomIdsForMessage(int messageId) async {
     final db = await database;
     final maps = await db.query('message_room_link', columns: ['room_id'], where: 'message_id = ?', whereArgs: [messageId]);
     return maps.map((map) => map['room_id'] as int).toList();
   }
+
   Future<Map<String, List<dynamic>>> getAllMessageLinks() async {
     final db = await database;
     final maps = await db.query('message_room_link');
@@ -158,5 +185,16 @@ class DatabaseHelper {
       links[messageId]!.add(roomId);
     }
     return links;
+  }
+  
+  // --- הפונקציה שגרמה לשגיאה והוספה כעת ---
+  Future<void> clearAndInsertMinyanim(List<Minyan> minyanim) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('minyanim'); // מנקה את כל המניינים הישנים
+      for (final minyan in minyanim) {
+        await txn.insert('minyanim', minyan.toDbMap());
+      }
+    });
   }
 }

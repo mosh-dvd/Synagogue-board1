@@ -1,4 +1,7 @@
+// lib/widgets/zmanim_widget.dart
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:synagogue_display/widgets/auto_scrolling_list_view.dart';
 
@@ -42,30 +45,32 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
       return const SizedBox.shrink();
     }
 
-    const primaryTextColor = Color(0xFF212529);
-    final timeColor = Colors.teal[600];
+    const cardBackgroundColor = Color(0xFF2D3748);
+    const primaryTextColor = Color(0xFFE2E8F0);
+    const accentColor = Color(0xFFF6E05E);
 
     final zmanimTiles = _zmanim.entries.map((entry) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: 70,
-              child: Text(
-                entry.value,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: timeColor),
-                textDirection: TextDirection.ltr,
+            Text(
+              entry.key,
+              style: GoogleFonts.rubik(
+                fontSize: 20,
+                color: primaryTextColor.withOpacity(0.85),
               ),
+              textAlign: TextAlign.right,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                entry.key,
-                style: TextStyle(fontSize: 20, color: primaryTextColor.withOpacity(0.8)),
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis,
+            Text(
+              entry.value,
+              style: GoogleFonts.tinos(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: accentColor,
               ),
+              textDirection: TextDirection.ltr,
             ),
           ],
         ),
@@ -73,27 +78,35 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
     }).toList();
 
     return Container(
-      // --- שינוי: הסרת המרווח החיצוני ---
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
-        ],
+        color: cardBackgroundColor,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-            child: Text("זמני היום (${widget.location})",
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryTextColor),
+            padding: const EdgeInsets.only(top: 20.0, bottom: 8.0),
+            child: Text(
+              "זמני היום (${widget.location})",
+              style: GoogleFonts.rubik(
+                fontSize: 26,
+                fontWeight: FontWeight.w600,
+                color: primaryTextColor,
+              ),
               textAlign: TextAlign.center,
             ),
           ),
-          const Divider(color: Colors.black12, indent: 16, endIndent: 16),
+          const Divider(
+            color: Colors.white12,
+            indent: 30,
+            endIndent: 30,
+          ),
           Expanded(
-            child: AutoScrollingListView(children: zmanimTiles),
+            child: AutoScrollingListView(
+              pauseDuration: const Duration(seconds: 5),
+              children: zmanimTiles,
+            ),
           ),
         ],
       ),

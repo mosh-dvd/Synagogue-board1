@@ -33,3 +33,4 @@ dependency_overrides:
   syncfusion_flutter_pdfviewer: ^31.2.5
   pdf_render: ^1.4.0
   equatable: ^2.0.5
+  google_fonts: ^6.2.1

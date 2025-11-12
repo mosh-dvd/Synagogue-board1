@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:synagogue_display/data/minyan_logic_helper.dart'; // <-- שורת הייבוא החסרה שהוספתי
+import 'package:synagogue_display/data/minyan_logic_helper.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:synagogue_display/widgets/clock_widget.dart';
@@ -32,7 +33,6 @@ class DisplayWindow extends StatefulWidget {
 }
 
 class _DisplayWindowState extends State<DisplayWindow> {
-  // State variables
   Room? _roomSettings;
   Map<MinyanScheduleType, Map<String, List<Minyan>>> _groupedMinyanim = {};
   List<Minyan> _allMinyanim = [];
@@ -40,8 +40,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
   String? _location;
   bool _isLoading = true;
   String? _previousPayload;
-  
-  // State for Next Minyan Header
   MinyanWithTime? _nextMinyan;
   Timer? _nextMinyanTimer;
   String _nextMinyanCountdown = "";
@@ -69,7 +67,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     super.dispose();
   }
 
-  // Logic for Next Minyan Header
   void _startNextMinyanTimer() {
     _updateNextMinyan();
     _nextMinyanTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -197,23 +194,32 @@ class _DisplayWindowState extends State<DisplayWindow> {
   Widget _buildMinyanimColumn({
       required Color cardBackgroundColor,
       required Color primaryTextColor,
-      required Color timeColor
+      required Color accentColor
   }) {
     List<Widget> minyanWidgets = [];
     final orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
 
     for (var type in orderedTypes) {
       if (_groupedMinyanim.containsKey(type) && _groupedMinyanim[type]!.isNotEmpty) {
-        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( _getScheduleTypeTitle(type), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryTextColor), textAlign: TextAlign.center, ), ), );
+        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( _getScheduleTypeTitle(type), style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w600, color: primaryTextColor), textAlign: TextAlign.center, ), ), );
+        minyanWidgets.add(const Divider(color: Colors.white12, indent: 30, endIndent: 30));
         _groupedMinyanim[type]!.forEach((prayerName, minyanList) {
-          minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text( prayerName, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryTextColor.withOpacity(0.8)), textAlign: TextAlign.center, ), ), );
+          minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w500, color: primaryTextColor.withOpacity(0.9)), textAlign: TextAlign.center, ), ), );
           for (var minyan in minyanList) {
-            minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.end, children: [ Expanded( child: Text( minyan.roomName ?? 'חדר לא ידוע', style: TextStyle(fontSize: 18, color: primaryTextColor.withOpacity(0.7)), textAlign: TextAlign.right, ), ), const SizedBox(width: 16), SizedBox( width: 80, child: Text( minyan.time ?? '--:--', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: timeColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ), ], ), ), );
+            minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.rubik(fontSize: 18, color: primaryTextColor.withOpacity(0.7)), textAlign: TextAlign.right, ), Text( minyan.time ?? '--:--', style: GoogleFonts.tinos(fontSize: 30, fontWeight: FontWeight.bold, color: accentColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ], ), ), );
           }
         });
       }
     }
-    return Container( decoration: BoxDecoration( color: cardBackgroundColor, borderRadius: BorderRadius.circular(12), boxShadow: [ BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)), ], ), child: _groupedMinyanim.isEmpty ? Center(child: Text('אין מניינים להיום', style: TextStyle(fontSize: 24, color: Colors.grey.shade600))) : ListView( padding: const EdgeInsets.symmetric(vertical: 8.0), children: minyanWidgets, ), );
+    return Container( 
+      decoration: BoxDecoration( 
+        color: cardBackgroundColor, 
+        borderRadius: BorderRadius.circular(16), 
+      ), 
+      child: _groupedMinyanim.isEmpty 
+        ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.rubik(fontSize: 24, color: Colors.white54))) 
+        : ListView( padding: const EdgeInsets.symmetric(vertical: 8.0), children: minyanWidgets, ), 
+    );
   }
 
   Widget _buildMessagePanel(List<Message> messages) {
@@ -261,15 +267,15 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
   }
 
-  Widget _buildHeaderTitle() {
-    const primaryTextColor = Color(0xFF212529);
-    final timeColor = Colors.teal[700];
-
+  Widget _buildHeaderTitle({
+      required Color primaryTextColor,
+      required Color accentColor
+  }) {
     if (_nextMinyan == null) {
       return Text(
         widget.title,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 52, fontWeight: FontWeight.bold, color: primaryTextColor),
+        style: GoogleFonts.amiri(fontSize: 58, fontWeight: FontWeight.bold, color: primaryTextColor),
       );
     } else {
       return Column(
@@ -278,13 +284,13 @@ class _DisplayWindowState extends State<DisplayWindow> {
         children: [
           Text(
             'המניין הבא: ${_nextMinyan!.minyan.name} ב${_nextMinyan!.minyan.roomName ?? ''}',
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: primaryTextColor),
+            style: GoogleFonts.rubik(fontSize: 34, fontWeight: FontWeight.w500, color: primaryTextColor),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
             _nextMinyanCountdown,
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: timeColor, fontFamily: 'monospace'),
+            style: GoogleFonts.robotoMono(fontSize: 30, fontWeight: FontWeight.bold, color: accentColor),
           ),
         ],
       );
@@ -300,11 +306,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
       return const Scaffold(body: Center(child: Text("שגיאה בטעינת הגדרות")));
     }
     
-    const backgroundColor = Color(0xFFF8F9FA);
-    const cardBackgroundColor = Colors.white;
-    const primaryTextColor = Color(0xFF212529);
-    const headerColor = Color(0xFFE9ECEF);
-    final timeColor = Colors.teal[600]!;
+    const backgroundColor = Color(0xFF1A202C);
+    const cardBackgroundColor = Color(0xFF2D3748);
+    const primaryTextColor = Color(0xFFE2E8F0);
+    const accentColor = Color(0xFFF6E05E);
+    const headerColor = Color(0xFF171923);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -313,48 +319,44 @@ class _DisplayWindowState extends State<DisplayWindow> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               color: headerColor,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (_roomSettings!.showClock) const ClockWidget(),
-                  Expanded(child: _buildHeaderTitle()),
-                  if (_roomSettings!.showCalendar) const HebcalWidget(),
+                  if (_roomSettings!.showClock) ClockWidget(),
+                  Expanded(child: _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor)),
+                  if (_roomSettings!.showCalendar) HebcalWidget(),
                 ],
               ),
             ),
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 3,
                       child: _buildMinyanimColumn(
                         cardBackgroundColor: cardBackgroundColor,
                         primaryTextColor: primaryTextColor,
-                        timeColor: timeColor,
+                        accentColor: accentColor,
                       ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 7,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 7,
                       child: _buildMessageLayout(),
                     ),
-                  ),
-                  if (_roomSettings!.showZmanim && _location != null)
-                    Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
+                    if (_roomSettings!.showZmanim && _location != null)
+                      const SizedBox(width: 12),
+                    if (_roomSettings!.showZmanim && _location != null)
+                      Expanded(
+                        flex: 3,
                         child: ZmanimWidget(location: _location!),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
