@@ -1,4 +1,5 @@
 // lib/widgets/clock_widget.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -20,7 +21,7 @@ class _ClockWidgetState extends State<ClockWidget> {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _getTime());
     super.initState();
   }
-  
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -45,7 +46,8 @@ class _ClockWidgetState extends State<ClockWidget> {
   Widget build(BuildContext context) {
     return Text(
       _timeString,
-      style: const TextStyle(color: Colors.white, fontSize: 24),
+      // שינוי הצבע לצבע טקסט כהה
+      style: const TextStyle(color: Color(0xFF37474F), fontSize: 24, fontWeight: FontWeight.w500),
     );
   }
-} 
+}

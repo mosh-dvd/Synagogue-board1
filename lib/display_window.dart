@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 
@@ -43,12 +44,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
   MinyanWithTime? _nextMinyan;
   Timer? _nextMinyanTimer;
   String _nextMinyanCountdown = "";
+  // הוסר: bool _isFullscreen = false;
 
   @override
   void initState() {
     super.initState();
     _startNextMinyanTimer();
-
     DesktopMultiWindow.setMethodHandler((call, fromWindowId) async {
       if (call.method == 'update_data') {
         if (call.arguments != _previousPayload) {
@@ -66,6 +67,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
     _nextMinyanTimer?.cancel();
     super.dispose();
   }
+  
+  // הוסרה: הפונקציה _toggleFullscreen()
 
   void _startNextMinyanTimer() {
     _updateNextMinyan();
@@ -76,7 +79,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   void _updateNextMinyan() {
     if (_allMinyanim.isEmpty || _location == null) return;
-    
     final foundMinyan = MinyanLogicHelper.findNextMinyan(_allMinyanim, _location!);
     if (mounted && (foundMinyan?.minyan.id != _nextMinyan?.minyan.id)) {
       setState(() {
@@ -92,18 +94,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
       }
       return;
     }
-
     final difference = _nextMinyan!.dateTime.difference(DateTime.now());
-
     if (difference.isNegative) {
       _updateNextMinyan();
       return;
     }
-    
     final hours = difference.inHours;
     final minutes = difference.inMinutes.remainder(60);
     final seconds = difference.inSeconds.remainder(60);
-
     if (mounted) {
       setState(() {
         _nextMinyanCountdown = '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
@@ -120,9 +118,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
     final currentRoomSettings = Room.fromMap(roomData);
     final location = payload['location'] as String? ?? 'ירושלים';
-    
     final allMinyanim = (payload['minyanim'] as List).map((m) => Minyan.fromMap(m)).toList();
-    
     final zmanimDateTimes = ZmanimHelper.getZmanimDateTimes(location);
     final processedMinyanim = allMinyanim.map((minyan) {
       if (minyan.timeType == MinyanTimeType.RELATIVE && minyan.relativeZman != null) {
@@ -134,19 +130,13 @@ class _DisplayWindowState extends State<DisplayWindow> {
       }
       return minyan;
     }).where((m) => m.time != null).toList();
-
     final dayOfWeek = DateTime.now().weekday;
     final bool showSpecialMinyanim = (dayOfWeek == DateTime.friday || dayOfWeek == DateTime.saturday);
     List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) {
       return (minyan.scheduleType == MinyanScheduleType.REGULAR) ? !showSpecialMinyanim : showSpecialMinyanim;
     }).toList();
-    
     todaysMinyanim.sort((a, b) => a.time!.compareTo(b.time!));
-    
-    List<Minyan> filteredMinyanim = (currentRoomSettings.displayMode == MinyanDisplayMode.ALL)
-        ? todaysMinyanim
-        : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
-    
+    List<Minyan> filteredMinyanim = (currentRoomSettings.displayMode == MinyanDisplayMode.ALL) ? todaysMinyanim : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
     Map<MinyanScheduleType, Map<String, List<Minyan>>> categorizedMinyanim = {};
     for (final minyan in filteredMinyanim) {
       final scheduleType = minyan.scheduleType;
@@ -155,7 +145,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
       if (categorizedMinyanim[scheduleType]![prayerName] == null) categorizedMinyanim[scheduleType]![prayerName] = [];
       categorizedMinyanim[scheduleType]![prayerName]!.add(minyan);
     }
-
     final allMessages = (payload['messages'] as List).map((m) => Message.fromMap(m)).toList();
     final links = payload['message_links'] as Map<String, dynamic>;
     Map<int, List<Message>> categorizedMessages = {1: [], 2: [], 3: [], 4: []};
@@ -170,7 +159,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
         }
       }
     }
-
     setState(() {
       _roomSettings = currentRoomSettings;
       _groupedMinyanim = categorizedMinyanim;
@@ -179,7 +167,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
       _location = location;
       _isLoading = false;
     });
-
     _updateNextMinyan();
   }
 
@@ -201,14 +188,37 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
     for (var type in orderedTypes) {
       if (_groupedMinyanim.containsKey(type) && _groupedMinyanim[type]!.isNotEmpty) {
-        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( _getScheduleTypeTitle(type), style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w600, color: primaryTextColor), textAlign: TextAlign.center, ), ), );
-        minyanWidgets.add(const Divider(color: Colors.white12, indent: 30, endIndent: 30));
-        _groupedMinyanim[type]!.forEach((prayerName, minyanList) {
+        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( _getScheduleTypeTitle(type), style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w500, color: primaryTextColor), textAlign: TextAlign.center, ), ), );
+        minyanWidgets.add(Divider(color: primaryTextColor.withOpacity(0.1), indent: 30, endIndent: 30, thickness: 1));
+        
+        final prayerGroups = _groupedMinyanim[type]!.entries.toList();
+        for (int i = 0; i < prayerGroups.length; i++) {
+          final prayerName = prayerGroups[i].key;
+          final minyanList = prayerGroups[i].value;
+
           minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w500, color: primaryTextColor.withOpacity(0.9)), textAlign: TextAlign.center, ), ), );
           for (var minyan in minyanList) {
             minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.rubik(fontSize: 18, color: primaryTextColor.withOpacity(0.7)), textAlign: TextAlign.right, ), Text( minyan.time ?? '--:--', style: GoogleFonts.tinos(fontSize: 30, fontWeight: FontWeight.bold, color: accentColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ], ), ), );
           }
-        });
+          
+          if (i < prayerGroups.length - 1) {
+            minyanWidgets.add(
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 60.0),
+                child: Row(
+                  children: [
+                    Expanded(child: Divider(color: primaryTextColor.withOpacity(0.2))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                      child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.6), size: 18),
+                    ),
+                    Expanded(child: Divider(color: primaryTextColor.withOpacity(0.2))),
+                  ],
+                ),
+              )
+            );
+          }
+        }
       }
     }
     return Container( 
@@ -216,9 +226,28 @@ class _DisplayWindowState extends State<DisplayWindow> {
         color: cardBackgroundColor, 
         borderRadius: BorderRadius.circular(16), 
       ), 
-      child: _groupedMinyanim.isEmpty 
-        ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.rubik(fontSize: 24, color: Colors.white54))) 
-        : ListView( padding: const EdgeInsets.symmetric(vertical: 8.0), children: minyanWidgets, ), 
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 8, right: 8,
+              child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24),
+            ),
+            Positioned(
+              top: 8, left: 8,
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.rotationY(pi),
+                child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24),
+              ),
+            ),
+            _groupedMinyanim.isEmpty 
+              ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.rubik(fontSize: 24, color: primaryTextColor.withOpacity(0.6)))) 
+              : ListView( padding: const EdgeInsets.only(top: 8.0, bottom: 8.0), children: minyanWidgets, ),
+          ],
+        ),
+      ), 
     );
   }
 
@@ -236,7 +265,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   Widget _buildMessageLayout() {
     final activePanels = _roomSettings?.activeMessagePanels ?? 1;
-
     switch (activePanels) {
       case 2:
         return Row(children: [
@@ -306,11 +334,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
       return const Scaffold(body: Center(child: Text("שגיאה בטעינת הגדרות")));
     }
     
-    const backgroundColor = Color(0xFF1A202C);
-    const cardBackgroundColor = Color(0xFF2D3748);
-    const primaryTextColor = Color(0xFFE2E8F0);
-    const accentColor = Color(0xFFF6E05E);
-    const headerColor = Color(0xFF171923);
+    const backgroundColor = Color(0xFFFFF7F7);
+    const columnColor = Color(0xFFB3E5FC);
+    const primaryTextColor = Color(0xFF37474F);
+    const accentColor = Color(0xFF0D47A1);
+    const headerColor = Color(0xFFFFF7F7);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -323,9 +351,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
               color: headerColor,
               child: Row(
                 children: [
-                  if (_roomSettings!.showClock) ClockWidget(),
+                  const SizedBox(width: 96), // ריווח בצד ימין כדי לאזן את שני הכפתורים בצד שמאל
+                  if (_roomSettings!.showClock) const ClockWidget(),
                   Expanded(child: _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor)),
-                  if (_roomSettings!.showCalendar) HebcalWidget(),
+                  if (_roomSettings!.showCalendar) const HebcalWidget(),
+                  const SizedBox(width: 48), // ריווח בצד שמאל
                 ],
               ),
             ),
@@ -338,7 +368,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     Expanded(
                       flex: 3,
                       child: _buildMinyanimColumn(
-                        cardBackgroundColor: cardBackgroundColor,
+                        cardBackgroundColor: columnColor,
                         primaryTextColor: primaryTextColor,
                         accentColor: accentColor,
                       ),

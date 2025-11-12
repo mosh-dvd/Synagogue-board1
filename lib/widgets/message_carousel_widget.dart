@@ -1,7 +1,9 @@
 // lib/widgets/message_carousel_widget.dart
+
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:path/path.dart' as p;
@@ -24,7 +26,7 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
     super.initState();
     _init();
   }
-  
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -45,9 +47,8 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
   @override
   void didUpdateWidget(MessageCarouselWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // אם רשימת ההודעות השתנתה, אתחל מחדש
     if (widget.messages.toString() != oldWidget.messages.toString()) {
-       if (_pageController.hasClients) {
+      if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
       _startTimer();
@@ -57,10 +58,9 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
   void _startTimer() {
     _timer?.cancel();
     if (!mounted || widget.messages.length <= 1) {
-      return; // אם אין מה להריץ, אל תתחיל טיימר
+      return;
     }
 
-    // פונקציה רקורסיבית בטוחה
     void scheduleNext() {
       if (!mounted) return;
 
@@ -77,13 +77,10 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
           duration: const Duration(milliseconds: 700),
           curve: Curves.easeInOut,
         );
-        
-        // קבע את הטיימר הבא
+
         scheduleNext();
       });
     }
-    
-    // התחל את הלולאה
     scheduleNext();
   }
 
@@ -95,14 +92,14 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
     switch (message.type) {
       case MessageType.TEXT:
         return Container(
-          color: Colors.blueGrey[900],
+          color: const Color(0xFFB3E5FC), // צבע תכלת שמיים, כמו העמודות
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
               child: Text(
                 message.content,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.w600),
+                style: GoogleFonts.rubik(fontSize: 48, color: const Color(0xFF37474F), fontWeight: FontWeight.w500),
               ),
             ),
           ),
@@ -111,7 +108,7 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
       case MessageType.PDF:
         final file = File(p.join(_mediaPath, message.content));
         return Container(
-          color: Colors.black,
+          color: const Color(0xFFFFF7F7),
           child: file.existsSync()
               ? Image.file(file, fit: BoxFit.contain)
               : Center(child: Text('קובץ התמונה לא נמצא:\n${message.content}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red, fontSize: 24))),
@@ -122,7 +119,13 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.messages.isEmpty) {
-      return const Center(child: Text('אין הודעות פעילות', style: TextStyle(fontSize: 24, color: Colors.grey)));
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Center(child: Text('אין הודעות פעילות', style: GoogleFonts.rubik(fontSize: 24, color: Colors.grey[600]))),
+      );
     }
 
     return PageView.builder(
