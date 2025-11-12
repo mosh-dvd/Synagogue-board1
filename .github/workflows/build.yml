@@ -28,7 +28,7 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
       - name: Setup Inno Setup
-        uses: Amine-Smahi/setup-inno-setup@v1.0.1
+        uses: Minionguy/setup-inno-setup@v1
       - name: Create Installer
         run: iscc "installer/setup_script.iss"
       - name: Upload Installer artifact
