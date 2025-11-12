@@ -6,8 +6,10 @@ on:
   push:
     tags:
       - 'v*'
+
+# הרשאות כתיבה כדי לאפשר יצירת Release
 permissions:
-contents: write # מפעיל על כל תגית שמתחילה ב-'v', למשל v1.0, v2.1-beta
+  contents: write
 
 jobs:
   # --- ג'וב לבניית גרסת ווינדוס ---
@@ -25,14 +27,15 @@ jobs:
         run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release
-      - name: Archive Windows build
-        # נארוז את כל התיקייה לקובץ ZIP כדי שיהיה קל להוריד
-        run: Compress-Archive -Path build/windows/x64/runner/Release -DestinationPath windows-build.zip
-      - name: Upload Windows artifact
+      - name: Setup Inno Setup
+        uses: Amine-Smahi/setup-inno-setup@v1.0.1
+      - name: Create Installer
+        run: iscc "installer/setup_script.iss"
+      - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: windows-build.zip
+          name: windows-installer
+          path: installer/Output/setup.exe
 
   # --- ג'וב לבניית גרסת לינוקס ---
   build-linux:
@@ -62,28 +65,22 @@ jobs:
   # --- ג'וב חדש: יצירת ה-Release ---
   create-release:
     name: Create Release
-    # תלוי בהצלחה של שני הג'ובים הקודמים
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Windows build
+      - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
-          name: windows-build
+          name: windows-installer
       - name: Download Linux build
         uses: actions/download-artifact@v4
         with:
           name: linux-build
-          
-      # השלב החשוב: יצירת ה-Release וצירוף הקבצים
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          # השתמש בשם התגית כשם ה-Release
           tag_name: ${{ github.ref_name }}
-          # סמן את זה כ-Pre-release (בטא)
           prerelease: true
-          # צרף את כל קבצי ה-ZIP שהורדנו
           files: |
-            windows-build.zip
+            setup.exe
             linux-build.zip
