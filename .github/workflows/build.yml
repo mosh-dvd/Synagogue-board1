@@ -1,39 +1,17 @@
 # שם התהליך
-name: Build Flutter App
+name: Create Release
 
-# מתי להריץ? בכל פוש לענף הראשי
+# מתי להריץ? רק כשדוחפים תגית שמתחילה ב-v
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
+
+# --- תוספת קריטית: הגדרת הרשאות ---
+permissions:
+  contents: write # נותן ל-Action הרשאה ליצור Release
 
 jobs:
-  # --- ג'וב לבניית גרסת אנדרואיד ---
-  build-android:
-    name: Build Android APK
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          # --- התיקון כאן: שינוי גרסת Java ל-17 ---
-          java-version: '17'
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: Get Flutter dependencies
-        run: flutter pub get
-      - name: Build APK
-        run: flutter build apk --release
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-
   # --- ג'וב לבניית גרסת ווינדוס ---
   build-windows:
     name: Build Windows App
@@ -49,34 +27,42 @@ jobs:
         run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release
-      - name: Upload Windows artifact
+      - name: Setup Inno Setup
+        uses: Amine-Smahi/setup-inno-setup@v1.0.1
+      - name: Create Installer
+        # ודא שהנתיב לקובץ התסריט שלך נכון
+        run: iscc "installer/setup_script.iss"
+      - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          # --- התיקון כאן: הוספת x64 לנתיב ---
-          path: build/windows/x64/runner/Release
+          name: windows-installer
+          # ודא שהקובץ setup.exe באמת נוצר בנתיב הזה
+          path: installer/Output/setup.exe
 
-  # --- ג'וב לבניית גרסת לינוקס ---
+  # ... (הג'וב של לינוקס נשאר ללא שינוי) ...
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
+    # ... (כל השלבים כמו קודם) ...
+    
+  create-release:
+    name: Create Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
     steps:
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v4
         with:
-          channel: 'stable'
-      - name: Get Flutter dependencies
-        run: flutter pub get
-      - name: Build Linux
-        run: flutter build linux --release
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
+          name: windows-installer
+      - name: Download Linux build
+        uses: actions/download-artifact@v4
         with:
           name: linux-build
-          path: build/linux/x64/release/bundle
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          prerelease: true
+          files: |
+            setup.exe
+            linux-build.zip
