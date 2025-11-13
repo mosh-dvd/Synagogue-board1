@@ -7,9 +7,9 @@ on:
     tags:
       - 'v*'
 
-# --- תוספת קריטית: הגדרת הרשאות ---
+# הרשאות כתיבה חיוניות כדי לאפשר ל-Action ליצור Release
 permissions:
-  contents: write # נותן ל-Action הרשאה ליצור Release
+  contents: write
 
 jobs:
   # --- ג'וב לבניית גרסת ווינדוס ---
@@ -19,50 +19,92 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
       - name: Get Flutter dependencies
         run: flutter pub get
+
       - name: Build Windows
         run: flutter build windows --release
+
       - name: Setup Inno Setup
+        # Action שמוריד ומתקין את Inno Setup ליצירת קובץ התקנה
         uses: Amine-Smahi/setup-inno-setup@v1.0.1
+
       - name: Create Installer
-        # ודא שהנתיב לקובץ התסריט שלך נכון
+        # הרצת Inno Setup על קובץ התסריט שלך כדי ליצור setup.exe
+        # ודא שהנתיב לקובץ setup_script.iss נכון בפרויקט שלך
         run: iscc "installer/setup_script.iss"
+
       - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          # ודא שהקובץ setup.exe באמת נוצר בנתיב הזה
+          # מעלה את קובץ ההתקנה שנוצר
           path: installer/Output/setup.exe
 
-  # ... (הג'וב של לינוקס נשאר ללא שינוי) ...
+  # --- ג'וב לבניית גרסת לינוקס ---
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
-    # ... (כל השלבים כמו קודם) ...
-    
+    steps:
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Linux
+        run: flutter build linux --release
+
+      - name: Archive Linux build
+        # יוצר קובץ zip מהתיקייה המקומפלת של לינוקס
+        run: zip -r linux-build.zip build/linux/x64/release/bundle
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          # מעלה את קובץ ה-zip שנוצר
+          path: linux-build.zip
+
+  # --- ג'וב ליצירת ה-Release ופרסומו ---
   create-release:
     name: Create Release
+    # הג'וב הזה ירוץ רק אחרי ששני הג'ובים הקודמים הצליחו
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
+      # שלב 1: הורדת התוצרים (artifacts) מהג'ובים הקודמים
       - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
           name: windows-installer
+
       - name: Download Linux build
         uses: actions/download-artifact@v4
         with:
           name: linux-build
+
+      # שלב 2: יצירת ה-Release וצירוף הקבצים שהורדנו
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          # משתמש בשם התגית שהפעילה את התהליך כשם הגרסה
           tag_name: ${{ github.ref_name }}
-          prerelease: true
+          # רשימת הקבצים שיש לצרף לגרסה
           files: |
             setup.exe
             linux-build.zip
