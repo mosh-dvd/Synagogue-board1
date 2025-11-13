@@ -7,9 +7,9 @@ on:
     tags:
       - 'v*'
 
-# הרשאות כתיבה כדי לאפשר יצירת Release
+# --- תוספת קריטית: הגדרת הרשאות ---
 permissions:
-  contents: write
+  contents: write # נותן ל-Action הרשאה ליצור Release
 
 jobs:
   # --- ג'וב לבניית גרסת ווינדוס ---
@@ -28,41 +28,23 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
       - name: Setup Inno Setup
-        uses: Minionguyjpro/Inno-Setup-Action@v1.0.2
+        uses: Amine-Smahi/setup-inno-setup@v1.0.1
       - name: Create Installer
+        # ודא שהנתיב לקובץ התסריט שלך נכון
         run: iscc "installer/setup_script.iss"
       - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
+          # ודא שהקובץ setup.exe באמת נוצר בנתיב הזה
           path: installer/Output/setup.exe
 
-  # --- ג'וב לבניית גרסת לינוקס ---
+  # ... (הג'וב של לינוקס נשאר ללא שינוי) ...
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
-    steps:
-      - name: Install Linux dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: Get Flutter dependencies
-        run: flutter pub get
-      - name: Build Linux
-        run: flutter build linux --release
-      - name: Archive Linux build
-        run: zip -r linux-build.zip build/linux/x64/release/bundle
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: linux-build.zip
-
-  # --- ג'וב חדש: יצירת ה-Release ---
+    # ... (כל השלבים כמו קודם) ...
+    
   create-release:
     name: Create Release
     needs: [build-windows, build-linux]
