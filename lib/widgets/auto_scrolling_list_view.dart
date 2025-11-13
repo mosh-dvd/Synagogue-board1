@@ -1,5 +1,3 @@
-// lib/widgets/auto_scrolling_list_view.dart
-// ******** תיקון טעות ההקלדה הקריטית כאן ********
 import 'dart:async';
 import 'package:flutter/material.dart';
 
@@ -7,12 +5,14 @@ class AutoScrollingListView extends StatefulWidget {
   final List<Widget> children;
   final Duration pauseDuration;
   final int scrollSpeed; // pixels per second
+  final EdgeInsetsGeometry? padding; // הוספת הפרמטר
 
   const AutoScrollingListView({
     Key? key,
     required this.children,
     this.pauseDuration = const Duration(seconds: 4),
     this.scrollSpeed = 30,
+    this.padding, // הוספה לקונסטרקטור
   }) : super(key: key);
 
   @override
@@ -37,7 +37,7 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
     super.didUpdateWidget(oldWidget);
     if (widget.children.length != oldWidget.children.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-         _isScrollingForward = true;
+        _isScrollingForward = true;
         _startOrUpdateAutoScroll();
       });
     }
@@ -52,7 +52,6 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
 
   void _startOrUpdateAutoScroll() {
     _timer?.cancel();
-    // ודא שהבקר מחובר לווידג'ט לפני שמתחילים
     if (!mounted || !_scrollController.hasClients || _scrollController.position.maxScrollExtent <= 0) {
       return;
     }
@@ -65,10 +64,9 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
     }
 
     final target = _isScrollingForward ? _scrollController.position.maxScrollExtent : 0.0;
-    
     final distance = (_scrollController.position.maxScrollExtent - _scrollController.position.minScrollExtent);
     final scrollDurationMs = (distance * 1000 / widget.scrollSpeed).round();
-    
+
     _scrollController.animateTo(
       target,
       duration: Duration(milliseconds: scrollDurationMs > 0 ? scrollDurationMs : 1),
@@ -85,7 +83,7 @@ class _AutoScrollingListViewState extends State<AutoScrollingListView> {
   Widget build(BuildContext context) {
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: widget.padding, // שימוש בפרמטר שהוספנו
       children: widget.children,
     );
   }

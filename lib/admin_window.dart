@@ -49,7 +49,6 @@ class _AdminWindowState extends State<AdminWindow> {
       
       final payload = jsonEncode({
         'rooms': dataProvider.rooms.map((r) => r.toMap()).toList(),
-        // --- שינוי קריטי: שימוש בפונקציה הנכונה ---
         'minyanim': dataProvider.minyanim.map((m) => m.toBroadcastMap()).toList(),
         'messages': dataProvider.messages.map((m) => m.toMap()).toList(),
         'message_links': dataProvider.messageLinks,
@@ -73,16 +72,18 @@ class _AdminWindowState extends State<AdminWindow> {
     await dataProvider.fetchAllData();
 
     for (final room in dataProvider.rooms) {
-      final arguments = jsonEncode({
-        'title': room.name,
-        'room_id': room.id,
-      });
+      if (room.isDisplayActive) { // בדיקה האם החדר פעיל
+        final arguments = jsonEncode({
+          'title': room.name,
+          'room_id': room.id,
+        });
 
-      final window = await DesktopMultiWindow.createWindow(arguments);
-      window
-        ..setFrame(const Offset(0, 0) & const Size(1280, 720))
-        ..setTitle(room.name)
-        ..show();
+        final window = await DesktopMultiWindow.createWindow(arguments);
+        window
+          ..setFrame(const Offset(0, 0) & const Size(1280, 720))
+          ..setTitle(room.name)
+          ..show();
+      }
     }
   }
 
@@ -112,7 +113,7 @@ class _AdminWindowState extends State<AdminWindow> {
               ),
               IconButton(
                 icon: const Icon(Icons.open_in_new),
-                tooltip: 'פתח את כל החלונות',
+                tooltip: 'פתח חלונות פעילים',
                 onPressed: () => _openAllWindows(context),
               ),
             ],

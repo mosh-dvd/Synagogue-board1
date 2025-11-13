@@ -1,4 +1,3 @@
-// lib/tabs/rooms_management_tab.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
@@ -14,7 +13,6 @@ class RoomsManagementTab extends StatelessWidget {
       context: context,
       builder: (ctx) => RoomSettingsDialog(room: room),
     ).then((_) {
-      // פשוט טוענים את הנתונים. המאזין ב-admin_window ידאג לכל השאר.
       Provider.of<DataProvider>(context, listen: false).fetchAllData();
     });
   }
@@ -51,11 +49,6 @@ class RoomsManagementTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<DataProvider>(
       builder: (context, dataProvider, child) {
-        // --- שינוי: הסרת הבדיקה של isLoading ---
-        // זו הבדיקה שגרמה למסך להבהב ולהיבנות מחדש עם מעגל טעינה.
-        // if (dataProvider.isLoading) {
-        //   return const Center(child: CircularProgressIndicator());
-        // }
         final rooms = dataProvider.rooms;
         return Scaffold(
           body: ListView.builder(
@@ -65,6 +58,23 @@ class RoomsManagementTab extends StatelessWidget {
               return Card(
                 child: ListTile(
                   title: Text(room.name),
+                  leading: Switch( // הוספת המתג
+                    value: room.isDisplayActive,
+                    onChanged: (bool value) async {
+                      final updatedRoom = Room(
+                        id: room.id,
+                        name: room.name,
+                        showClock: room.showClock,
+                        showCalendar: room.showCalendar,
+                        showZmanim: room.showZmanim,
+                        displayMode: room.displayMode,
+                        activeMessagePanels: room.activeMessagePanels,
+                        isDisplayActive: value, // העברת הערך החדש
+                      );
+                      await DatabaseHelper().updateRoom(updatedRoom);
+                      Provider.of<DataProvider>(context, listen: false).fetchAllData();
+                    },
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

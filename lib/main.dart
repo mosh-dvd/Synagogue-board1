@@ -1,4 +1,3 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'dart:convert';
@@ -9,22 +8,22 @@ import 'package:synagogue_display/admin_window.dart';
 import 'package:synagogue_display/data/data_provider.dart';
 import 'package:synagogue_display/data/database_helper.dart';
 import 'package:synagogue_display/display_window.dart';
+import 'package:synagogue_display/logger.dart'; // הוספת הייבוא
 
-// ******** תיקון: הלוגיקה עברה לכאן ישירות *********
 void main(List<String> args) async {
-  // הבדיקה אם מדובר בחלון משנה מתבצעת עכשיו ישירות על הארגומנטים
+  // אתחול הלוגר מיד בהתחלה
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppLogger.init();
+
   if (args.isNotEmpty && args.first == 'multi_window') {
     final windowId = int.parse(args[1]);
     final arguments = jsonDecode(args[2]) as Map<String, dynamic>;
     final String screenTitle = arguments['title'] ?? 'תצוגה';
     final int roomId = arguments['room_id'];
 
-    // אם זה חלון משנה, הרץ את אפליקציית התצוגה
     runApp(DisplayApp(windowId: windowId, title: screenTitle, roomId: roomId));
   } else {
-    // אחרת, זה החלון הראשי. הרץ את אפליקציית הניהול
-    WidgetsFlutterBinding.ensureInitialized();
-
+    // אתחול DB וכו' נשאר כאן
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -35,12 +34,10 @@ void main(List<String> args) async {
       ChangeNotifierProvider(
         create: (context) => DataProvider(),
         child: const AdminApp(),
-      )
+      ),
     );
   }
 }
-
-// ******** MainAppRouter נמחק כי הוא כבר לא נחוץ *********
 
 class AdminApp extends StatelessWidget {
   const AdminApp({Key? key}) : super(key: key);
@@ -70,7 +67,6 @@ class DisplayApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // חשוב לעטוף גם את אפליקציית התצוגה ב-MaterialApp
     return MaterialApp(
       title: title,
       debugShowCheckedModeBanner: false,

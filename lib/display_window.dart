@@ -1,17 +1,15 @@
-// lib/display_window.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
-
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:synagogue_display/data/minyan_logic_helper.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
+import 'package:synagogue_display/widgets/auto_scrolling_list_view.dart'; // הוספת ייבוא
 import 'package:synagogue_display/widgets/clock_widget.dart';
 import 'package:synagogue_display/widgets/hebcal_widget.dart';
 import 'package:synagogue_display/widgets/zmanim_widget.dart';
@@ -44,7 +42,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
   MinyanWithTime? _nextMinyan;
   Timer? _nextMinyanTimer;
   String _nextMinyanCountdown = "";
-  // הוסר: bool _isFullscreen = false;
 
   @override
   void initState() {
@@ -67,8 +64,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     _nextMinyanTimer?.cancel();
     super.dispose();
   }
-  
-  // הוסרה: הפונקציה _toggleFullscreen()
 
   void _startNextMinyanTimer() {
     _updateNextMinyan();
@@ -92,6 +87,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
       if (DateTime.now().second % 30 == 0) {
         _updateNextMinyan();
       }
+      setState(() {
+        _nextMinyanCountdown = "";
+      });
       return;
     }
     final difference = _nextMinyan!.dateTime.difference(DateTime.now());
@@ -230,21 +228,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            Positioned(
-              top: 8, right: 8,
-              child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24),
-            ),
-            Positioned(
-              top: 8, left: 8,
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.rotationY(pi),
-                child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24),
-              ),
-            ),
+            Positioned( top: 8, right: 8, child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24), ),
+            Positioned( top: 8, left: 8, child: Transform( alignment: Alignment.center, transform: Matrix4.rotationY(pi), child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24), ), ),
             _groupedMinyanim.isEmpty 
               ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.rubik(fontSize: 24, color: primaryTextColor.withOpacity(0.6)))) 
-              : ListView( padding: const EdgeInsets.only(top: 8.0, bottom: 8.0), children: minyanWidgets, ),
+              : AutoScrollingListView( // שימוש בווידג'ט הגלילה
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                  children: minyanWidgets
+                ),
           ],
         ),
       ), 
@@ -351,11 +342,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
               color: headerColor,
               child: Row(
                 children: [
-                  const SizedBox(width: 96), // ריווח בצד ימין כדי לאזן את שני הכפתורים בצד שמאל
+                  const SizedBox(width: 96),
                   if (_roomSettings!.showClock) const ClockWidget(),
                   Expanded(child: _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor)),
                   if (_roomSettings!.showCalendar) const HebcalWidget(),
-                  const SizedBox(width: 48), // ריווח בצד שמאל
+                  const SizedBox(width: 48),
                 ],
               ),
             ),

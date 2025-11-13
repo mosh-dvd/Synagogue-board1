@@ -1,4 +1,3 @@
-// lib/data/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
@@ -15,7 +14,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 10,
+      version: 11, // עדכון גרסה ל-11
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,7 +34,8 @@ class DatabaseHelper {
         show_calendar INTEGER NOT NULL DEFAULT 1,
         show_zmanim INTEGER NOT NULL DEFAULT 0,
         display_mode TEXT NOT NULL DEFAULT 'THIS_ROOM_ONLY',
-        active_message_panels INTEGER NOT NULL DEFAULT 1
+        active_message_panels INTEGER NOT NULL DEFAULT 1,
+        is_display_active INTEGER NOT NULL DEFAULT 1 
       )
     ''');
 
@@ -60,15 +60,15 @@ class DatabaseHelper {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 9) {
-      if (oldVersion < 2) { await db.execute('ALTER TABLE rooms ADD COLUMN show_zmanim INTEGER NOT NULL DEFAULT 0'); }
-      if (oldVersion < 5) { await db.execute('ALTER TABLE rooms ADD COLUMN side_panel_flex INTEGER NOT NULL DEFAULT 1'); }
-      if (oldVersion < 6) { await db.execute("ALTER TABLE minyanim ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'REGULAR'"); }
-      if (oldVersion < 7) { await db.execute("ALTER TABLE rooms ADD COLUMN active_message_panels INTEGER NOT NULL DEFAULT 1"); }
-      if (oldVersion < 8) { await db.execute("ALTER TABLE messages ADD COLUMN panel_index INTEGER NOT NULL DEFAULT 1"); }
-    }
+    if (oldVersion < 2) { await db.execute('ALTER TABLE rooms ADD COLUMN show_zmanim INTEGER NOT NULL DEFAULT 0'); }
+    if (oldVersion < 5) { await db.execute('ALTER TABLE rooms ADD COLUMN side_panel_flex INTEGER NOT NULL DEFAULT 1'); }
+    if (oldVersion < 6) { await db.execute("ALTER TABLE minyanim ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'REGULAR'"); }
+    if (oldVersion < 7) { await db.execute("ALTER TABLE rooms ADD COLUMN active_message_panels INTEGER NOT NULL DEFAULT 1"); }
+    if (oldVersion < 8) { await db.execute("ALTER TABLE messages ADD COLUMN panel_index INTEGER NOT NULL DEFAULT 1"); }
     
     if (oldVersion < 9) {
+      // This logic seems incorrect for just adding a column, but keeping as is from user's context.
+      // A simple ALTER TABLE would be better.
       await db.execute('CREATE TABLE rooms_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, show_clock INTEGER NOT NULL DEFAULT 1, show_calendar INTEGER NOT NULL DEFAULT 1, show_zmanim INTEGER NOT NULL DEFAULT 0, display_mode TEXT NOT NULL DEFAULT \'THIS_ROOM_ONLY\', active_message_panels INTEGER NOT NULL DEFAULT 1)');
       await db.execute('INSERT INTO rooms_new (id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels) SELECT id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels FROM rooms');
       await db.execute('DROP TABLE rooms');
@@ -77,9 +77,13 @@ class DatabaseHelper {
 
     if (oldVersion < 10) {
       await db.execute('CREATE TABLE minyanim_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, room_id INTEGER NOT NULL, schedule_type TEXT NOT NULL DEFAULT \'REGULAR\', time_type TEXT NOT NULL DEFAULT \'FIXED\', time TEXT, relative_zman TEXT, relative_offset_minutes INTEGER)');
-      await db.execute('INSERT INTO minyanim_new (id, name, room_id, schedule_type, time) SELECT id, name, room_id, schedule_type, time FROM minyanim');
+      await db.execute('INSERT INTO minyanim_new (id, name, room_id, schedule_type, time_type, time, relative_zman, relative_offset_minutes) SELECT id, name, room_id, schedule_type, time_type, time, relative_zman, relative_offset_minutes FROM minyanim');
       await db.execute('DROP TABLE minyanim');
       await db.execute('ALTER TABLE minyanim_new RENAME TO minyanim');
+    }
+
+    if (oldVersion < 11) {
+      await db.execute('ALTER TABLE rooms ADD COLUMN is_display_active INTEGER NOT NULL DEFAULT 1');
     }
   }
 
@@ -137,6 +141,16 @@ class DatabaseHelper {
     await db.delete('minyanim', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> clearAndInsertMinyanim(List<Minyan> minyanim) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('minyanim');
+      for (final minyan in minyanim) {
+        await txn.insert('minyanim', minyan.toDbMap());
+      }
+    });
+  }
+
   Future<int> insertMessage(Message message) async {
     final db = await database;
     return await db.insert('messages', message.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -185,16 +199,5 @@ class DatabaseHelper {
       links[messageId]!.add(roomId);
     }
     return links;
-  }
-  
-  // --- הפונקציה שגרמה לשגיאה והוספה כעת ---
-  Future<void> clearAndInsertMinyanim(List<Minyan> minyanim) async {
-    final db = await database;
-    await db.transaction((txn) async {
-      await txn.delete('minyanim'); // מנקה את כל המניינים הישנים
-      for (final minyan in minyanim) {
-        await txn.insert('minyanim', minyan.toDbMap());
-      }
-    });
   }
 }
