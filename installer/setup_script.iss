@@ -1,14 +1,15 @@
 [Setup]
-; אתה יכול לשנות את הערכים האלה אם תרצה
-AppName="שלט לבית כנסת"
-AppVersion=1.0.8
+AppName=Synagogue Display
+AppVersion=1.0.9
 AppPublisher=Mosh-DVD
 DefaultDirName={autopf}\Synagogue Display
-AppId={{ synagogue_display_guid }} ; מזהה ייחודי
+AppId={{ synagogue_display_guid }}
 OutputDir=Output
 OutputBaseFilename=setup
 Compression=lzma
 SolidCompression=yes
+; --- הוספה חדשה: מגדיר את ההתקנה כ-64 ביט ---
+ArchitecturesInstallIn64BitMode=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -17,14 +18,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; נתיב זה נכון עבור GitHub Actions, אין צורך לשנות
-Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; --- תיקון הנתיב החשוב ---
+Source: "..\build\windows\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-; כאן השתמשנו בשם ה-EXE הנכון
 Name: "{group}\Synagogue Display"; Filename: "{app}\synagogue_display.exe"
 Name: "{autodesktop}\Synagogue Display"; Filename: "{app}\synagogue_display.exe"; Tasks: desktopicon
 
 [Run]
-; וגם כאן השתמשנו בשם ה-EXE הנכון
 Filename: "{app}\synagogue_display.exe"; Description: "{cm:LaunchProgram,Synagogue Display}"; Flags: nowait postinstall skipifsilent
