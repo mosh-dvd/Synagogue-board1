@@ -14,7 +14,8 @@ class Room {
   final bool showZmanim;
   final MinyanDisplayMode displayMode;
   final int activeMessagePanels;
-  final bool isDisplayActive; // שדה חדש
+  final bool isDisplayActive;
+  final bool showWeekdayMinyanimOnShabbat; // *** שינוי: שדה חדש ***
 
   Room({
     this.id,
@@ -24,7 +25,8 @@ class Room {
     this.showZmanim = false,
     this.displayMode = MinyanDisplayMode.THIS_ROOM_ONLY,
     this.activeMessagePanels = 1,
-    this.isDisplayActive = true, // ערך ברירת מחדל
+    this.isDisplayActive = true,
+    this.showWeekdayMinyanimOnShabbat = false, // *** שינוי: ערך ברירת מחדל ***
   });
 
   Map<String, dynamic> toMap() {
@@ -36,7 +38,8 @@ class Room {
       'show_zmanim': showZmanim ? 1 : 0,
       'display_mode': displayMode.name,
       'active_message_panels': activeMessagePanels,
-      'is_display_active': isDisplayActive ? 1 : 0, // המרה למספר
+      'is_display_active': isDisplayActive ? 1 : 0,
+      'show_weekday_minyanim_on_shabbat': showWeekdayMinyanimOnShabbat ? 1 : 0, // *** שינוי: הוספה למפה ***
     };
   }
 
@@ -52,7 +55,8 @@ class Room {
         orElse: () => MinyanDisplayMode.THIS_ROOM_ONLY
       ),
       activeMessagePanels: map['active_message_panels'] ?? 1,
-      isDisplayActive: map['is_display_active'] == null ? true : map['is_display_active'] == 1, // המרה מבסיס הנתונים
+      isDisplayActive: map['is_display_active'] == null ? true : map['is_display_active'] == 1,
+      showWeekdayMinyanimOnShabbat: map['show_weekday_minyanim_on_shabbat'] == null ? false : map['show_weekday_minyanim_on_shabbat'] == 1, // *** שינוי: המרה מהמפה ***
     );
   }
 }
@@ -61,7 +65,7 @@ enum MinyanScheduleType {
   REGULAR,
   SHABBAT_DAY,
   MOTZEI_SHABBAT,
-  EREV_SHABBAT // *** שינוי: הוספת ערב שבת/חג ***
+  EREV_SHABBAT
 }
 
 enum MinyanTimeType { FIXED, RELATIVE }

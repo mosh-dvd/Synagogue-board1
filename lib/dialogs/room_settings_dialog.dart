@@ -1,3 +1,4 @@
+// lib/dialogs/room_settings_dialog.dart (קובץ מלא)
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/database_helper.dart';
@@ -16,6 +17,7 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
   late bool _showZmanim;
   late MinyanDisplayMode _displayMode;
   late int _activeMessagePanels;
+  late bool _showWeekdayMinyanimOnShabbat; // *** שינוי: משתנה חדש ***
 
   @override
   void initState() {
@@ -25,6 +27,7 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
     _showZmanim = widget.room.showZmanim;
     _displayMode = widget.room.displayMode;
     _activeMessagePanels = widget.room.activeMessagePanels;
+    _showWeekdayMinyanimOnShabbat = widget.room.showWeekdayMinyanimOnShabbat; // *** שינוי: אתחול משתנה חדש ***
   }
 
   Future<void> _saveSettings() async {
@@ -36,6 +39,8 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
       showZmanim: _showZmanim,
       displayMode: _displayMode,
       activeMessagePanels: _activeMessagePanels,
+      isDisplayActive: widget.room.isDisplayActive,
+      showWeekdayMinyanimOnShabbat: _showWeekdayMinyanimOnShabbat, // *** שינוי: שמירת הערך החדש ***
     );
     await DatabaseHelper().updateRoom(updatedRoom);
     Navigator.of(context).pop();
@@ -69,6 +74,16 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
                 }
               },
             ),
+            
+            // *** שינוי: הוספת הגדרת תצוגת יום חול בשבת ***
+            SwitchListTile(
+              title: const Text('הצג מנייני יום חול גם בשבת/חג'),
+              subtitle: const Text('מציג את מנייני יום חול (בנוסף למנייני שבת/חג)'),
+              value: _showWeekdayMinyanimOnShabbat,
+              onChanged: (bool value) => setState(() => _showWeekdayMinyanimOnShabbat = value),
+            ),
+            // *** סוף הוספת הגדרת תצוגת יום חול בשבת ***
+            
             const Divider(height: 30),
             const Text('פריסת הודעות', style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButtonFormField<int>(

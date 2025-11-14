@@ -1,5 +1,4 @@
-// lib/data/database_helper.dart
-
+// lib/data/database_helper.dart (קובץ מלא)
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
@@ -16,7 +15,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 11, // עדכון גרסה ל-11
+      version: 12, // *** שינוי: עדכון גרסה ל-12 ***
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -37,7 +36,8 @@ class DatabaseHelper {
         show_zmanim INTEGER NOT NULL DEFAULT 0,
         display_mode TEXT NOT NULL DEFAULT 'THIS_ROOM_ONLY',
         active_message_panels INTEGER NOT NULL DEFAULT 1,
-        is_display_active INTEGER NOT NULL DEFAULT 1 
+        is_display_active INTEGER NOT NULL DEFAULT 1,
+        show_weekday_minyanim_on_shabbat INTEGER NOT NULL DEFAULT 0 
       )
     ''');
 
@@ -69,8 +69,6 @@ class DatabaseHelper {
     if (oldVersion < 8) { await db.execute("ALTER TABLE messages ADD COLUMN panel_index INTEGER NOT NULL DEFAULT 1"); }
     
     if (oldVersion < 9) {
-      // This logic seems incorrect for just adding a column, but keeping as is from user's context.
-      // A simple ALTER TABLE would be better.
       await db.execute('CREATE TABLE rooms_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, show_clock INTEGER NOT NULL DEFAULT 1, show_calendar INTEGER NOT NULL DEFAULT 1, show_zmanim INTEGER NOT NULL DEFAULT 0, display_mode TEXT NOT NULL DEFAULT \'THIS_ROOM_ONLY\', active_message_panels INTEGER NOT NULL DEFAULT 1)');
       await db.execute('INSERT INTO rooms_new (id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels) SELECT id, name, show_clock, show_calendar, show_zmanim, display_mode, active_message_panels FROM rooms');
       await db.execute('DROP TABLE rooms');
@@ -86,6 +84,10 @@ class DatabaseHelper {
 
     if (oldVersion < 11) {
       await db.execute('ALTER TABLE rooms ADD COLUMN is_display_active INTEGER NOT NULL DEFAULT 1');
+    }
+    
+    if (oldVersion < 12) {
+      await db.execute('ALTER TABLE rooms ADD COLUMN show_weekday_minyanim_on_shabbat INTEGER NOT NULL DEFAULT 0'); // *** שינוי: הוספת העמודה החדשה ***
     }
   }
 
@@ -125,13 +127,6 @@ class DatabaseHelper {
   Future<void> insertMinyan(Minyan minyan) async {
     final db = await database;
     await db.insert('minyanim', minyan.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-  
-  // [הוספת פונקציה חסרה]
-  Future<void> updateMinyan(Minyan minyan) async {
-    final db = await database;
-    final data = minyan.toDbMap(); data.remove('id');
-    await db.update('minyanim', data, where: 'id = ?', whereArgs: [minyan.id]);
   }
 
   Future<List<Minyan>> getMinyanim() async {

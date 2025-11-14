@@ -1,18 +1,14 @@
-# שם התהליך
 name: Create Release
 
-# מתי להריץ? רק כשדוחפים תגית שמתחילה ב-v
 on:
   push:
     tags:
       - 'v*'
 
-# הרשאות כתיבה חיוניות כדי לאפשר ל-Action ליצור Release
 permissions:
   contents: write
 
 jobs:
- # --- ג'וב לבניית גרסת ווינדוס ---
   build-windows:
     name: Build Windows App
     runs-on: windows-latest
@@ -31,11 +27,10 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
-      - name: Setup Inno Setup
-        uses: Amine-Smahi/setup-inno-setup@v1.0.1
-
-      - name: Create Installer
-        run: iscc "installer/setup_script.iss"
+      - name: Build Installer (Inno Setup)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          script-file: installer/setup_script.iss
 
       - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
@@ -43,7 +38,6 @@ jobs:
           name: windows-installer
           path: installer/Output/setup.exe
 
-  # --- ג'וב לבניית גרסת לינוקס ---
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
@@ -66,7 +60,6 @@ jobs:
         run: flutter build linux --release
 
       - name: Archive Linux build
-        # יוצר קובץ zip מהתיקייה המקומפלת של לינוקס
         run: zip -r linux-build.zip build/linux/x64/release/bundle
 
       - name: Upload Linux artifact
@@ -75,7 +68,6 @@ jobs:
           name: linux-build
           path: linux-build.zip
 
-  # --- ג'וב ליצירת ה-Release ופרסומו ---
   create-release:
     name: Create Release
     needs: [build-windows, build-linux]

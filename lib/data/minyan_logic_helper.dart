@@ -19,12 +19,11 @@ class MinyanLogicHelper {
     final zmanimForToday = ZmanimHelper.getZmanimDateTimes(location);
     final jewishCalendar = JewishCalendar.fromDateTime(now);
     
-    MinyanScheduleType relevantScheduleType;
+    MinyanScheduleType relevantScheduleTypeForFiltering;
     final sunsetToday = zmanimForToday[RelativeZman.sunset];
-    final chatzosToday = zmanimForToday[RelativeZman.chatzos]; // *** שינוי: הוספת חצות ***
+    final chatzosToday = zmanimForToday[RelativeZman.chatzos]; 
     
-    MinyanScheduleType relevantScheduleTypeForFiltering; // ייתכן שנצטרך להציג כמה סוגים, אבל כאן רק את הסוג העיקרי למעבר
-
+    // קביעת סוג לוח הזמנים העיקרי
     if (jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov()) { // שבת או יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
             relevantScheduleTypeForFiltering = MinyanScheduleType.MOTZEI_SHABBAT;
@@ -33,11 +32,11 @@ class MinyanLogicHelper {
         }
     } else if (jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov()) { // ערב שבת או ערב יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
-            relevantScheduleTypeForFiltering = MinyanScheduleType.SHABBAT_DAY; // ערבית של שבת כבר נכנסה, מחפשים את תפילת היום של שבת
-        } else if (chatzosToday != null && now.isAfter(chatzosToday)) { // *** שינוי: אחרי חצות ביום שישי ***
-            relevantScheduleTypeForFiltering = MinyanScheduleType.EREV_SHABBAT; // מנחה/ערבית ערב שבת
+            relevantScheduleTypeForFiltering = MinyanScheduleType.SHABBAT_DAY; 
+        } else if (chatzosToday != null && now.isAfter(chatzosToday)) { 
+            relevantScheduleTypeForFiltering = MinyanScheduleType.EREV_SHABBAT; 
         } else {
-            relevantScheduleTypeForFiltering = MinyanScheduleType.REGULAR; // שחרית כיום חול
+            relevantScheduleTypeForFiltering = MinyanScheduleType.REGULAR; 
         }
     } else { // יום חול רגיל
         relevantScheduleTypeForFiltering = MinyanScheduleType.REGULAR;
@@ -48,12 +47,11 @@ class MinyanLogicHelper {
         if (relevantScheduleTypeForFiltering == MinyanScheduleType.REGULAR) {
             return m.scheduleType == MinyanScheduleType.REGULAR;
         } else if (relevantScheduleTypeForFiltering == MinyanScheduleType.EREV_SHABBAT) {
-            // ביום שישי אחרי חצות, אנו בודקים את מנייני ערב שבת וגם את מנייני מוצאי שבת,
-            // למקרה שאנחנו קרובים למוצאי שבת (מנחה, ערבית, ומוצאי שבת עצמו)
             return m.scheduleType == MinyanScheduleType.EREV_SHABBAT || m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT;
         } else if (relevantScheduleTypeForFiltering == MinyanScheduleType.SHABBAT_DAY) {
-            // בשבת/חג ובמוצ"ש, אנו בודקים את מנייני שבת ומוצ"ש
-            return m.scheduleType == MinyanScheduleType.SHABBAT_DAY || m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT;
+            // *** שינוי: בשבת/חג, בודקים גם REGULAR בנוסף לשבת ומוצ"ש ***
+            // זה מאפשר למניין הבא למצוא מניין יום חול אם הוא הוגדר
+            return m.scheduleType == MinyanScheduleType.SHABBAT_DAY || m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT || m.scheduleType == MinyanScheduleType.REGULAR;
         } else if (relevantScheduleTypeForFiltering == MinyanScheduleType.MOTZEI_SHABBAT) {
              return m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT;
         }
@@ -63,6 +61,7 @@ class MinyanLogicHelper {
     List<MinyanWithTime> upcomingMinyanim = [];
     for (var minyan in relevantMinyanim) {
       DateTime? minyanTime;
+      // ... (לוגיקת חישוב הזמן נשארת כפי שהיא) ...
       if (minyan.timeType == MinyanTimeType.FIXED && minyan.time != null) {
         final parts = minyan.time!.split(':');
         if (parts.length == 2) {

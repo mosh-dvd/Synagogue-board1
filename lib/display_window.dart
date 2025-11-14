@@ -1,5 +1,4 @@
-// lib/display_window.dart (קובץ מלא מתוקן)
-
+// lib/display_window.dart (קובץ מלא)
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -135,7 +134,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final chatzosToday = zmanimDateTimes[RelativeZman.chatzos];
     List<MinyanScheduleType> activeScheduleTypes = [];
 
-    // *** לוגיקת המניינים ***
     final isShabbat = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
     final isErevShabbat = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
     final isSunday = jewishCalendar.getDayOfWeek() == 1;
@@ -146,19 +144,22 @@ class _DisplayWindowState extends State<DisplayWindow> {
         } else {
             activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
         }
+        
+        // *** שינוי: הוספת מנייני יום חול אם ההגדרה מופעלת ***
+        if (currentRoomSettings.showWeekdayMinyanimOnShabbat) {
+          activeScheduleTypes.add(MinyanScheduleType.REGULAR);
+        }
+        // *** סוף שינוי ***
+        
     } else if (isErevShabbat) { // ערב שבת / ערב יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
-            // לאחר שקיעה (שישי בערב) - מציג את תפילות שבת (כי ערבית שבת)
             activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
         } else if (chatzosToday != null && now.isAfter(chatzosToday)) {
-            // אחרי חצות (מנחה, ערבית)
             activeScheduleTypes = [MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.MOTZEI_SHABBAT]; 
         } else {
-            // לפני חצות (שחרית כיום חול)
             activeScheduleTypes = [MinyanScheduleType.REGULAR];
         }
     } else if (isSunday && sunsetToday != null && now.isBefore(sunsetToday)) { // יום ראשון (מוצאי שבת)
-         // יום ראשון עד שקיעה: מציג מוצאי שבת (אם יש) ורגיל
          activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT];
     } else { // יום חול רגיל (כולל יום ראשון אחרי שקיעה)
         activeScheduleTypes = [MinyanScheduleType.REGULAR];
@@ -218,11 +219,20 @@ class _DisplayWindowState extends State<DisplayWindow> {
       required Color accentColor
   }) {
     List<Widget> minyanWidgets = [];
+    // *** שינוי: סדר ההצגה: REGULAR לפני SHABBAT_DAY ***
     final orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
 
     for (var type in orderedTypes) {
       if (_groupedMinyanim.containsKey(type) && _groupedMinyanim[type]!.isNotEmpty) {
-        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( _getScheduleTypeTitle(type), style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w500, color: primaryTextColor), textAlign: TextAlign.center, ), ), );
+        // *** שינוי: אם זה REGULAR בשבת, מציג כ"מנייני השבוע" במקום "תפילות ליום חול" ***
+        String title;
+        if (type == MinyanScheduleType.REGULAR && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
+            title = 'מנייני השבוע';
+        } else {
+            title = _getScheduleTypeTitle(type);
+        }
+        
+        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w500, color: primaryTextColor), textAlign: TextAlign.center, ), ), );
         minyanWidgets.add(Divider(color: primaryTextColor.withOpacity(0.1), indent: 30, endIndent: 30, thickness: 1));
         
         final prayerGroups = _groupedMinyanim[type]!.entries.toList();
@@ -286,7 +296,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   Widget _buildMessagePanel(List<Message> messages) {
-    // הסרת צל ואפקטים לא נצרכים, שמירת רקע פשוט
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFFFF7F7), // צבע אפור בהיר
@@ -299,7 +308,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   Widget _buildMessageLayout() {
-    // *** לוגיקה זו מכוונת לפריסה של רשת 2x2 בתוך ה-Expanded ב-build ***
     
     final panels = [
       _buildMessagePanel(_panelMessages[1] ?? []), // חלונית 1
@@ -363,13 +371,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   Widget _buildHeaderTitle({ required Color primaryTextColor, required Color accentColor }) {
-    // *** ייצוב הכותרת הראשית כפי שהיא מופיעה בתמונה, והצבת התאריך בצד שמאל למעלה ***
     
     // שורה 1: כותרת ראשית (שעון, תאריך עברי מלא, שם החדר)
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -451,7 +458,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
     final hasSidebar = zmanimWidget != null;
 
-    // *** הפריסה הראשית: שלושה טורים, ימין (מניינים), אמצע (הודעות), שמאל (זמנים) ***
+    // הפריסה הראשית: ימין (מניינים) : מרכז (הודעות) : שמאל (זמנים)
     return Directionality(
       textDirection: ui.TextDirection.rtl,
       child: Scaffold(
@@ -482,7 +489,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     const SizedBox(width: 16),
                     
                     // עמודה שמאלית: זמנים
-                    // *** הטור השמאלי יציג רק את הזמנים, והוא יהיה טור צר ***
                     if (hasSidebar) // מציג רק אם ווידג'ט זמנים פעיל
                       Expanded(
                         flex: 1, // טור צר
@@ -494,7 +500,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                                   child: Padding(
                                     padding: const EdgeInsets.only(bottom: 16.0),
                                     child: AspectRatio(
-                                      aspectRatio: 1 / 1.5, // יחס גובה-רוחב כדי לתפוס פחות מקום
+                                      aspectRatio: 1 / 1.5,
                                       child: zmanimWidget,
                                     ),
                                   ),
@@ -503,7 +509,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
                         ),
                       )
                     else 
-                      // אם אין זמנים, אולי אפשר להשתמש בשטח לטור המניינים/הודעות
                       const SizedBox.shrink(),
                   ],
                 ),
