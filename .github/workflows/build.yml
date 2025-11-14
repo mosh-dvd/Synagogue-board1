@@ -30,7 +30,7 @@ jobs:
       - name: Build Installer (Inno Setup)
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
-          script-file: installer/setup_script.iss
+          path: installer/setup_script.iss
 
       - name: Upload Installer artifact
         uses: actions/upload-artifact@v4
