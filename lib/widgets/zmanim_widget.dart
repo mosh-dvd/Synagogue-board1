@@ -101,6 +101,7 @@ class _ZmanimWidgetState extends State<ZmanimWidget> {
                   endIndent: 30,
                   thickness: 1,
                 ),
+                // [תיקון גלילה] AutoScrollingListView חייב להיות בתוך Expanded/גובה מוגדר
                 Expanded(
                   child: AutoScrollingListView(
                     pauseDuration: const Duration(seconds: 5),

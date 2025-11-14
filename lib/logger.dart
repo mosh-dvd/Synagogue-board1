@@ -1,3 +1,5 @@
+// lib/logger.dart
+
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -57,6 +59,14 @@ class AppLogger {
 
       // כתיבה לקובץ רק במצב ריצה
       if (kReleaseMode && _logFile != null) {
+        if (await _logFile!.exists()) {
+          final fileSize = await _logFile!.length();
+          const maxFileSize = 10 * 1024 * 1024; // מגבלה של 10MB
+          if (fileSize > maxFileSize) {
+             // איפוס קובץ הלוג ומניעת גדילה מופרזת
+            await _logFile!.writeAsString('--- Log file reset due to excessive size ($fileSize bytes) ---\n', mode: FileMode.write);
+          }
+        }
         await _logFile!.writeAsString(logEntry, mode: FileMode.append);
       }
     } catch (e) {

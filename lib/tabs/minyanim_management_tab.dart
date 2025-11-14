@@ -1,5 +1,4 @@
-// lib/tabs/minyanim_management_tab.dart
-
+// lib/tabs/minyanim_management_tab.dart (קובץ מלא)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
@@ -23,8 +22,9 @@ class MinyanimManagementTab extends StatelessWidget {
   String _getScheduleTypeName(MinyanScheduleType type) {
     switch (type) {
       case MinyanScheduleType.REGULAR: return 'יום חול';
-      case MinyanScheduleType.SHABBAT_DAY: return 'שבת/חג';
+      case MinyanScheduleType.SHABBAT_DAY: return 'שבת/חג (יום)';
       case MinyanScheduleType.MOTZEI_SHABBAT: return 'מוצ"ש';
+      case MinyanScheduleType.EREV_SHABBAT: return 'ערב שבת/חג (מנחה/ערבית)'; // *** שינוי: הוספת שם התצוגה ***
     }
   }
   
@@ -61,7 +61,12 @@ class MinyanimManagementTab extends StatelessWidget {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<Room>( hint: const Text('בחר חדר'), value: selectedRoom, items: rooms.map((room) => DropdownMenuItem(value: room, child: Text(room.name))).toList(), onChanged: (Room? newValue) => setState(() => selectedRoom = newValue), validator: (v) => v == null ? 'חובה לבחור חדר' : null, ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<MinyanScheduleType>( decoration: const InputDecoration(labelText: 'תזמון'), value: selectedScheduleType, items: MinyanScheduleType.values.map((type) => DropdownMenuItem(value: type, child: Text(_getScheduleTypeName(type)))).toList(), onChanged: (v) => setState(() => selectedScheduleType = v!), ),
+                      DropdownButtonFormField<MinyanScheduleType>(
+                        decoration: const InputDecoration(labelText: 'תזמון'), 
+                        value: selectedScheduleType, 
+                        items: MinyanScheduleType.values.map((type) => DropdownMenuItem(value: type, child: Text(_getScheduleTypeName(type)))).toList(), // *** שינוי: שימוש בכל הערכים החדשים ***
+                        onChanged: (v) => setState(() => selectedScheduleType = v!), 
+                      ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<MinyanTimeType>( decoration: const InputDecoration(labelText: 'סוג הזמן'), value: selectedTimeType, items: const [ DropdownMenuItem(value: MinyanTimeType.FIXED, child: Text('שעה קבועה')), DropdownMenuItem(value: MinyanTimeType.RELATIVE, child: Text('יחסי לזמן ביום')), ], onChanged: (v) => setState(() => selectedTimeType = v!), ),
                       const SizedBox(height: 16),

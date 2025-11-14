@@ -1,3 +1,5 @@
+// lib/data/database_helper.dart
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
@@ -123,6 +125,13 @@ class DatabaseHelper {
   Future<void> insertMinyan(Minyan minyan) async {
     final db = await database;
     await db.insert('minyanim', minyan.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+  
+  // [הוספת פונקציה חסרה]
+  Future<void> updateMinyan(Minyan minyan) async {
+    final db = await database;
+    final data = minyan.toDbMap(); data.remove('id');
+    await db.update('minyanim', data, where: 'id = ?', whereArgs: [minyan.id]);
   }
 
   Future<List<Minyan>> getMinyanim() async {

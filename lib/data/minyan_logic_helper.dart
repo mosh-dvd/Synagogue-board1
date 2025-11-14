@@ -1,5 +1,4 @@
-// lib/data/minyan_logic_helper.dart
-
+// lib/data/minyan_logic_helper.dart (קובץ מלא)
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:kosher_dart/kosher_dart.dart';
@@ -22,29 +21,43 @@ class MinyanLogicHelper {
     
     MinyanScheduleType relevantScheduleType;
     final sunsetToday = zmanimForToday[RelativeZman.sunset];
+    final chatzosToday = zmanimForToday[RelativeZman.chatzos]; // *** שינוי: הוספת חצות ***
+    
+    MinyanScheduleType relevantScheduleTypeForFiltering; // ייתכן שנצטרך להציג כמה סוגים, אבל כאן רק את הסוג העיקרי למעבר
 
     if (jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov()) { // שבת או יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
-            relevantScheduleType = MinyanScheduleType.MOTZEI_SHABBAT;
+            relevantScheduleTypeForFiltering = MinyanScheduleType.MOTZEI_SHABBAT;
         } else {
-            relevantScheduleType = MinyanScheduleType.SHABBAT_DAY;
+            relevantScheduleTypeForFiltering = MinyanScheduleType.SHABBAT_DAY;
         }
     } else if (jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov()) { // ערב שבת או ערב יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
-            relevantScheduleType = MinyanScheduleType.SHABBAT_DAY;
+            relevantScheduleTypeForFiltering = MinyanScheduleType.SHABBAT_DAY; // ערבית של שבת כבר נכנסה, מחפשים את תפילת היום של שבת
+        } else if (chatzosToday != null && now.isAfter(chatzosToday)) { // *** שינוי: אחרי חצות ביום שישי ***
+            relevantScheduleTypeForFiltering = MinyanScheduleType.EREV_SHABBAT; // מנחה/ערבית ערב שבת
         } else {
-            relevantScheduleType = MinyanScheduleType.REGULAR;
+            relevantScheduleTypeForFiltering = MinyanScheduleType.REGULAR; // שחרית כיום חול
         }
     } else { // יום חול רגיל
-        relevantScheduleType = MinyanScheduleType.REGULAR;
+        relevantScheduleTypeForFiltering = MinyanScheduleType.REGULAR;
     }
 
+    // קביעת אילו סוגי מניינים רלוונטיים לבדיקה כעת
     List<Minyan> relevantMinyanim = allMinyanim.where((m) {
-        if (relevantScheduleType == MinyanScheduleType.REGULAR) {
+        if (relevantScheduleTypeForFiltering == MinyanScheduleType.REGULAR) {
             return m.scheduleType == MinyanScheduleType.REGULAR;
-        } else {
+        } else if (relevantScheduleTypeForFiltering == MinyanScheduleType.EREV_SHABBAT) {
+            // ביום שישי אחרי חצות, אנו בודקים את מנייני ערב שבת וגם את מנייני מוצאי שבת,
+            // למקרה שאנחנו קרובים למוצאי שבת (מנחה, ערבית, ומוצאי שבת עצמו)
+            return m.scheduleType == MinyanScheduleType.EREV_SHABBAT || m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT;
+        } else if (relevantScheduleTypeForFiltering == MinyanScheduleType.SHABBAT_DAY) {
+            // בשבת/חג ובמוצ"ש, אנו בודקים את מנייני שבת ומוצ"ש
             return m.scheduleType == MinyanScheduleType.SHABBAT_DAY || m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT;
+        } else if (relevantScheduleTypeForFiltering == MinyanScheduleType.MOTZEI_SHABBAT) {
+             return m.scheduleType == MinyanScheduleType.MOTZEI_SHABBAT;
         }
+        return false;
     }).toList();
 
     List<MinyanWithTime> upcomingMinyanim = [];

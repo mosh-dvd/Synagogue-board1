@@ -1,19 +1,22 @@
+// lib/display_window.dart (קובץ מלא מתוקן)
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:synagogue_display/data/minyan_logic_helper.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
-import 'package:synagogue_display/widgets/auto_scrolling_list_view.dart'; // הוספת ייבוא
 import 'package:synagogue_display/widgets/clock_widget.dart';
 import 'package:synagogue_display/widgets/hebcal_widget.dart';
 import 'package:synagogue_display/widgets/zmanim_widget.dart';
 import 'package:synagogue_display/widgets/message_carousel_widget.dart';
+import 'package:kosher_dart/kosher_dart.dart';
 
 class DisplayWindow extends StatefulWidget {
   final int windowId;
@@ -87,9 +90,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
       if (DateTime.now().second % 30 == 0) {
         _updateNextMinyan();
       }
-      setState(() {
-        _nextMinyanCountdown = "";
-      });
       return;
     }
     final difference = _nextMinyan!.dateTime.difference(DateTime.now());
@@ -128,13 +128,48 @@ class _DisplayWindowState extends State<DisplayWindow> {
       }
       return minyan;
     }).where((m) => m.time != null).toList();
-    final dayOfWeek = DateTime.now().weekday;
-    final bool showSpecialMinyanim = (dayOfWeek == DateTime.friday || dayOfWeek == DateTime.saturday);
-    List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) {
-      return (minyan.scheduleType == MinyanScheduleType.REGULAR) ? !showSpecialMinyanim : showSpecialMinyanim;
-    }).toList();
+
+    final now = DateTime.now();
+    final jewishCalendar = JewishCalendar.fromDateTime(now);
+    final sunsetToday = zmanimDateTimes[RelativeZman.sunset];
+    final chatzosToday = zmanimDateTimes[RelativeZman.chatzos];
+    List<MinyanScheduleType> activeScheduleTypes = [];
+
+    // *** לוגיקת המניינים ***
+    final isShabbat = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
+    final isErevShabbat = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
+    final isSunday = jewishCalendar.getDayOfWeek() == 1;
+
+    if (isShabbat) { // שבת / יום טוב
+        if (sunsetToday != null && now.isAfter(sunsetToday)) {
+            activeScheduleTypes = [MinyanScheduleType.MOTZEI_SHABBAT];
+        } else {
+            activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
+        }
+    } else if (isErevShabbat) { // ערב שבת / ערב יום טוב
+        if (sunsetToday != null && now.isAfter(sunsetToday)) {
+            // לאחר שקיעה (שישי בערב) - מציג את תפילות שבת (כי ערבית שבת)
+            activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
+        } else if (chatzosToday != null && now.isAfter(chatzosToday)) {
+            // אחרי חצות (מנחה, ערבית)
+            activeScheduleTypes = [MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.MOTZEI_SHABBAT]; 
+        } else {
+            // לפני חצות (שחרית כיום חול)
+            activeScheduleTypes = [MinyanScheduleType.REGULAR];
+        }
+    } else if (isSunday && sunsetToday != null && now.isBefore(sunsetToday)) { // יום ראשון (מוצאי שבת)
+         // יום ראשון עד שקיעה: מציג מוצאי שבת (אם יש) ורגיל
+         activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT];
+    } else { // יום חול רגיל (כולל יום ראשון אחרי שקיעה)
+        activeScheduleTypes = [MinyanScheduleType.REGULAR];
+    }
+    
+    List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) => activeScheduleTypes.contains(minyan.scheduleType)).toList();
+    
     todaysMinyanim.sort((a, b) => a.time!.compareTo(b.time!));
+    
     List<Minyan> filteredMinyanim = (currentRoomSettings.displayMode == MinyanDisplayMode.ALL) ? todaysMinyanim : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
+    
     Map<MinyanScheduleType, Map<String, List<Minyan>>> categorizedMinyanim = {};
     for (final minyan in filteredMinyanim) {
       final scheduleType = minyan.scheduleType;
@@ -171,6 +206,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
   String _getScheduleTypeTitle(MinyanScheduleType type) {
     switch (type) {
       case MinyanScheduleType.REGULAR: return 'תפילות ליום חול';
+      case MinyanScheduleType.EREV_SHABBAT: return 'מניינים מיוחדים'; 
       case MinyanScheduleType.SHABBAT_DAY: return 'תפילות שבת וחג';
       case MinyanScheduleType.MOTZEI_SHABBAT: return 'תפילות למוצאי שבת';
     }
@@ -182,7 +218,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
       required Color accentColor
   }) {
     List<Widget> minyanWidgets = [];
-    final orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
+    final orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
 
     for (var type in orderedTypes) {
       if (_groupedMinyanim.containsKey(type) && _groupedMinyanim[type]!.isNotEmpty) {
@@ -228,14 +264,21 @@ class _DisplayWindowState extends State<DisplayWindow> {
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            Positioned( top: 8, right: 8, child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24), ),
-            Positioned( top: 8, left: 8, child: Transform( alignment: Alignment.center, transform: Matrix4.rotationY(pi), child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24), ), ),
+            Positioned(
+              top: 8, right: 8,
+              child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24),
+            ),
+            Positioned(
+              top: 8, left: 8,
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.rotationY(pi),
+                child: Icon(Icons.spa_outlined, color: primaryTextColor.withOpacity(0.4), size: 24),
+              ),
+            ),
             _groupedMinyanim.isEmpty 
               ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.rubik(fontSize: 24, color: primaryTextColor.withOpacity(0.6)))) 
-              : AutoScrollingListView( // שימוש בווידג'ט הגלילה
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                  children: minyanWidgets
-                ),
+              : ListView( padding: const EdgeInsets.only(top: 8.0, bottom: 8.0), children: minyanWidgets, ),
           ],
         ),
       ), 
@@ -243,139 +286,225 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   Widget _buildMessagePanel(List<Message> messages) {
+    // הסרת צל ואפקטים לא נצרכים, שמירת רקע פשוט
     return Container(
       decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300)),
-      child: ClipRRect(
+        color: const Color(0xFFFFF7F7), // צבע אפור בהיר
         borderRadius: BorderRadius.circular(11),
-        child: MessageCarouselWidget(messages: messages),
       ),
+      child: messages.isEmpty
+          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.rubik(fontSize: 18, color: Colors.grey[400])))
+          : MessageCarouselWidget(messages: messages),
     );
   }
 
   Widget _buildMessageLayout() {
-    final activePanels = _roomSettings?.activeMessagePanels ?? 1;
-    switch (activePanels) {
-      case 2:
-        return Row(children: [
-          Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))),
-          Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
-        ]);
-      case 3:
-        return Column(children: [
-          Expanded(flex: 2, child: Row(children: [ 
-            Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))), 
-            Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
-          ])),
-          Expanded(flex: 1, child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))),
-        ]);
-      case 4:
-        return Column(children: [
-          Expanded(child: Row(children: [ 
-            Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []))), 
-            Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[2] ?? []))),
-          ])),
-          Expanded(child: Row(children: [ 
-            Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[3] ?? []))), 
-            Expanded(child: Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[4] ?? []))),
-          ])),
-        ]);
-      default:
-        return Padding(padding: const EdgeInsets.all(4.0), child: _buildMessagePanel(_panelMessages[1] ?? []));
+    // *** לוגיקה זו מכוונת לפריסה של רשת 2x2 בתוך ה-Expanded ב-build ***
+    
+    final panels = [
+      _buildMessagePanel(_panelMessages[1] ?? []), // חלונית 1
+      _buildMessagePanel(_panelMessages[2] ?? []), // חלונית 2
+      if (_roomSettings!.activeMessagePanels >= 3) _buildMessagePanel(_panelMessages[3] ?? []), // חלונית 3
+      if (_roomSettings!.activeMessagePanels == 4) _buildMessagePanel(_panelMessages[4] ?? []), // חלונית 4
+    ];
+    
+    const double spacing = 12.0; 
+    
+    // אם יש רק חלונית 1 פעילה
+    if (_roomSettings!.activeMessagePanels == 1) {
+       return panels[0];
     }
+    
+    List<Widget> messageWidgets = [];
+
+    // שורה עליונה (חלוניות 1 ו-2)
+    if (_roomSettings!.activeMessagePanels >= 2) {
+        messageWidgets.add(
+            Expanded(
+                child: Row(
+                    children: [
+                        Expanded(child: panels[1]), // חלונית 2 (שמאל עליון)
+                        const SizedBox(width: spacing), 
+                        Expanded(child: panels[0]), // חלונית 1 (ימין עליון)
+                    ],
+                ),
+            ),
+        );
+        // מרווח בין השורות
+        if (_roomSettings!.activeMessagePanels >= 3) {
+            messageWidgets.add(const SizedBox(height: spacing));
+        }
+    }
+    
+    // שורה תחתונה (חלוניות 3 ו-4)
+    if (_roomSettings!.activeMessagePanels == 3) {
+       messageWidgets.add(
+            Expanded(
+                child: panels[2], // חלונית 3 (למטה)
+            ),
+       );
+    } else if (_roomSettings!.activeMessagePanels == 4) {
+       messageWidgets.add(
+            Expanded(
+                child: Row(
+                     children: [
+                        Expanded(child: panels[3]), // חלונית 4 (שמאל תחתון)
+                        const SizedBox(width: spacing),
+                        Expanded(child: panels[2]), // חלונית 3 (ימין תחתון)
+                     ],
+                ),
+            ),
+       );
+    }
+    
+    return Column(
+        children: messageWidgets,
+    );
   }
 
-  Widget _buildHeaderTitle({
-      required Color primaryTextColor,
-      required Color accentColor
-  }) {
-    if (_nextMinyan == null) {
-      return Text(
-        widget.title,
-        textAlign: TextAlign.center,
-        style: GoogleFonts.amiri(fontSize: 58, fontWeight: FontWeight.bold, color: primaryTextColor),
-      );
-    } else {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'המניין הבא: ${_nextMinyan!.minyan.name} ב${_nextMinyan!.minyan.roomName ?? ''}',
-            style: GoogleFonts.rubik(fontSize: 34, fontWeight: FontWeight.w500, color: primaryTextColor),
-            textAlign: TextAlign.center,
+  Widget _buildHeaderTitle({ required Color primaryTextColor, required Color accentColor }) {
+    // *** ייצוב הכותרת הראשית כפי שהיא מופיעה בתמונה, והצבת התאריך בצד שמאל למעלה ***
+    
+    // שורה 1: כותרת ראשית (שעון, תאריך עברי מלא, שם החדר)
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 1. שעון (ימין למעלה)
+              if (_roomSettings!.showClock) 
+                const ClockWidget()
+              else
+                const SizedBox.shrink(),
+                
+              // 2. כותרת החדר (אמצע, גדולה)
+              Text(
+                widget.title,
+                style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.bold, color: primaryTextColor),
+              ),
+              
+              // 3. תאריך עברי מלא (שמאל למעלה)
+              if (_roomSettings!.showCalendar) 
+                const HebcalWidget()
+              else
+                const SizedBox.shrink(),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            _nextMinyanCountdown,
-            style: GoogleFonts.robotoMono(fontSize: 30, fontWeight: FontWeight.bold, color: accentColor),
+        ),
+        
+        // שורה 2: המניין הבא (רצועה כחולה בהירה)
+        Container(
+          color: primaryTextColor.withOpacity(0.05), // רקע עדין
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 1. טקסט "אין מניינים קרובים" / מניין הבא
+              Text(
+                _nextMinyan == null ? 'אין מניינים קרובים' : 'המניין הבא:', 
+                style: GoogleFonts.rubik(fontSize: 22, color: primaryTextColor.withOpacity(0.8))
+              ),
+                
+              // 2. פרטי המניין
+              if (_nextMinyan != null) ...[
+                Text(
+                  '${_nextMinyan!.minyan.name} - ${_nextMinyan!.minyan.roomName ?? 'חדר לא ידוע'}',
+                  style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.bold, color: accentColor),
+                ),
+                Text(
+                  _nextMinyanCountdown,
+                  style: GoogleFonts.tinos(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
+                  textDirection: ui.TextDirection.ltr,
+                ),
+              ] else
+                const SizedBox.shrink(),
+            ],
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading || _roomSettings == null || _location == null) {
+      return const Center(child: CircularProgressIndicator());
     }
-    if (_roomSettings == null) {
-      return const Scaffold(body: Center(child: Text("שגיאה בטעינת הגדרות")));
-    }
-    
-    const backgroundColor = Color(0xFFFFF7F7);
-    const columnColor = Color(0xFFB3E5FC);
-    const primaryTextColor = Color(0xFF37474F);
-    const accentColor = Color(0xFF0D47A1);
-    const headerColor = Color(0xFFFFF7F7);
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Directionality(
-        textDirection: ui.TextDirection.rtl,
-        child: Column(
+    const columnColor = Color(0xFFE3F2FD); // Light Blue Background
+    const cardBackgroundColor = Color(0xFFB3E5FC); // Lighter Blue Card
+    const primaryTextColor = Color(0xFF37474F); // Dark Slate Text
+    const accentColor = Color(0xFF0D47A1); // Deep Blue Accent
+
+    final minyanimColumn = _buildMinyanimColumn(
+      cardBackgroundColor: cardBackgroundColor,
+      primaryTextColor: primaryTextColor,
+      accentColor: accentColor,
+    );
+
+    final zmanimWidget = _roomSettings!.showZmanim && _location != null
+        ? ZmanimWidget(location: _location!)
+        : null;
+
+    final hasSidebar = zmanimWidget != null;
+
+    // *** הפריסה הראשית: שלושה טורים, ימין (מניינים), אמצע (הודעות), שמאל (זמנים) ***
+    return Directionality(
+      textDirection: ui.TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: columnColor,
+        body: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              color: headerColor,
-              child: Row(
-                children: [
-                  const SizedBox(width: 96),
-                  if (_roomSettings!.showClock) const ClockWidget(),
-                  Expanded(child: _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor)),
-                  if (_roomSettings!.showCalendar) const HebcalWidget(),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
+            // הכותרת הראשית + המניין הבא
+            _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor),
+            
+            // אזור התצוגה הראשי
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // עמודה ימנית: מניינים
                     Expanded(
-                      flex: 3,
-                      child: _buildMinyanimColumn(
-                        cardBackgroundColor: columnColor,
-                        primaryTextColor: primaryTextColor,
-                        accentColor: accentColor,
-                      ),
+                      flex: 1, // טור צר
+                      child: minyanimColumn,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
+                    
+                    // עמודה מרכזית: הודעות (החלק הרחב)
                     Expanded(
-                      flex: 7,
-                      child: _buildMessageLayout(),
+                      flex: 2, // טור רחב
+                      child: _buildMessageLayout(), // הודעות בלבד
                     ),
-                    if (_roomSettings!.showZmanim && _location != null)
-                      const SizedBox(width: 12),
-                    if (_roomSettings!.showZmanim && _location != null)
+                    const SizedBox(width: 16),
+                    
+                    // עמודה שמאלית: זמנים
+                    // *** הטור השמאלי יציג רק את הזמנים, והוא יהיה טור צר ***
+                    if (hasSidebar) // מציג רק אם ווידג'ט זמנים פעיל
                       Expanded(
-                        flex: 3,
-                        child: ZmanimWidget(location: _location!),
-                      ),
+                        flex: 1, // טור צר
+                        child: Column(
+                          children: [
+                            if (zmanimWidget != null)
+                               Expanded(
+                                  flex: 1,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 16.0),
+                                    child: AspectRatio(
+                                      aspectRatio: 1 / 1.5, // יחס גובה-רוחב כדי לתפוס פחות מקום
+                                      child: zmanimWidget,
+                                    ),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      )
+                    else 
+                      // אם אין זמנים, אולי אפשר להשתמש בשטח לטור המניינים/הודעות
+                      const SizedBox.shrink(),
                   ],
                 ),
               ),

@@ -1,3 +1,4 @@
+// lib/data/models.dart (קובץ מלא)
 import 'package:synagogue_display/data/zmanim_helper.dart';
 
 enum MinyanDisplayMode {
@@ -59,7 +60,8 @@ class Room {
 enum MinyanScheduleType {
   REGULAR,
   SHABBAT_DAY,
-  MOTZEI_SHABBAT
+  MOTZEI_SHABBAT,
+  EREV_SHABBAT // *** שינוי: הוספת ערב שבת/חג ***
 }
 
 enum MinyanTimeType { FIXED, RELATIVE }

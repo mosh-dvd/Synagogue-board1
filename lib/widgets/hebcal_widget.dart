@@ -1,3 +1,4 @@
+// lib/widgets/hebcal_widget.dart (קובץ מלא מתוקן)
 import 'package:flutter/material.dart';
 import 'package:kosher_dart/kosher_dart.dart';
 
@@ -74,20 +75,21 @@ class HebcalWidget extends StatelessWidget {
     return str;
   }
 
-  String getFormattedHebrewDate() {
+  // *** שינוי: הוספת פונקציה לתצוגת יום וחודש בלבד ***
+  String getFormattedHebrewDateShort() {
     final jewishDate = JewishDate();
 
     final day = toGematria(jewishDate.getJewishDayOfMonth());
     final month = _getMonthName(jewishDate);
-    final year = toGematria(jewishDate.getJewishYear() % 1000);
 
-    return '$day $month $year';
+    return '$day $month'; // מחזיר רק יום וחודש
   }
 
+  // *** שינוי: החלפת הפונקציה הקוראת ***
   @override
   Widget build(BuildContext context) {
     return Text(
-      getFormattedHebrewDate(),
+      getFormattedHebrewDateShort(), // שימוש בגרסה הקצרה
       style: const TextStyle(color: Colors.black87, fontSize: 24),
     );
   }

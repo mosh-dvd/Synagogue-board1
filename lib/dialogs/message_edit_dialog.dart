@@ -1,3 +1,5 @@
+// lib/dialogs/message_edit_dialog.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -24,6 +26,9 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
   String? _finalFileName;
   bool _isConverting = false;
   int _panelIndex = 1;
+  
+  // [תיקון] משתנה מקומי לשמירה זמנית של סוג ההודעה הסופי
+  MessageType _finalType = MessageType.TEXT; 
 
   List<Room> _allRooms = [];
   List<int> _selectedRoomIds = [];
@@ -34,7 +39,7 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
     _loadInitialData();
 
     if (widget.message != null) {
-      _typeSelection = widget.message!.type == MessageType.TEXT ? MessageType.TEXT : MessageType.IMAGE;
+      _typeSelection = widget.message!.type == MessageType.TEXT ? MessageType.TEXT : (widget.message!.content.toLowerCase().endsWith('.pdf') ? MessageType.PDF : MessageType.IMAGE);
       _durationController.text = widget.message!.duration.toString();
       _isActive = widget.message!.isActive;
       _panelIndex = widget.message!.panelIndex;
@@ -46,6 +51,7 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
     } else {
       _durationController.text = '10';
     }
+    _finalType = widget.message?.type ?? MessageType.TEXT;
   }
 
   Future<void> _loadInitialData() async {
@@ -63,13 +69,21 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
     setState(() => _isConverting = true);
 
     FilePickerResult? result;
-    if (_typeSelection == MessageType.IMAGE) {
-      result = await FilePicker.platform.pickFiles(type: FileType.image);
-    } else if (_typeSelection == MessageType.PDF) {
-      result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    try {
+      if (_typeSelection == MessageType.IMAGE) {
+        result = await FilePicker.platform.pickFiles(type: FileType.image);
+      } else if (_typeSelection == MessageType.PDF) {
+        result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+      }
+    } catch (e) {
+      print('File picking failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('שגיאה בבחירת קובץ')));
+      setState(() => _isConverting = false);
+      return;
     }
 
-    if (result == null) {
+
+    if (result == null || result.files.single.path == null) {
       setState(() => _isConverting = false);
       return;
     }
@@ -89,22 +103,35 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
         final imageBaseName = p.basenameWithoutExtension(originalFileName);
         final outputImagePath = p.join(mediaDir.path, imageBaseName);
 
+        // שימו לב: שימוש בתוכנה חיצונית (pdftoppm). אם היא לא מותקנת, זה ייכשל.
         final processResult = await Process.run('pdftoppm', [
           '-png', '-f', '1', '-l', '1', sourcePath, outputImagePath,
         ]);
 
         if (processResult.exitCode == 0) {
           fileNameToSave = '$imageBaseName-1.png';
+          _finalType = MessageType.IMAGE; // [תיקון] שימוש ב-_finalType
         } else {
-          print('PDF conversion failed: ${processResult.stderr}');
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('שגיאה בהמרת קובץ ה-PDF')));
+          String errorMessage = 'שגיאה בהמרת קובץ ה-PDF';
+          if (processResult.stderr.toString().toLowerCase().contains('not found')) {
+              errorMessage = 'שגיאה: התוכנה "pdftoppm" אינה מותקנת או אינה נגישה במערכת. נדרשת התקנה חיצונית.';
+          } else {
+              print('PDF conversion failed: ${processResult.stderr}');
+          }
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
           setState(() => _isConverting = false);
           return;
         }
       } else {
         final newFile = File(p.join(mediaDir.path, originalFileName));
+        // בדיקה אם הקובץ קיים כבר במקום היעד
+        if (await newFile.exists()) {
+          // מחיקה כדי למנוע קריסה בהעתקה אם קובץ קיים
+          await newFile.delete(); 
+        }
         await File(sourcePath).copy(newFile.path);
         fileNameToSave = originalFileName;
+        _finalType = MessageType.IMAGE; // [תיקון] שימוש ב-_finalType
       }
 
       setState(() {
@@ -121,10 +148,11 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    MessageType finalType = _typeSelection == MessageType.TEXT ? MessageType.TEXT : MessageType.IMAGE;
+    MessageType finalType; 
     String content;
 
     if (_typeSelection == MessageType.TEXT) {
+      finalType = MessageType.TEXT;
       content = _contentController.text;
     } else {
       if (_finalFileName == null) {
@@ -132,6 +160,8 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
         return;
       }
       content = _finalFileName!;
+      // [תיקון] שימוש בערך שנשמר במהלך _pickFile
+      finalType = _finalType; 
     }
 
     final message = Message(
