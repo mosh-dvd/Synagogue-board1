@@ -15,7 +15,7 @@ class Room {
   final MinyanDisplayMode displayMode;
   final int activeMessagePanels;
   final bool isDisplayActive;
-  final bool showWeekdayMinyanimOnShabbat; // *** שינוי: שדה חדש ***
+  final bool showWeekdayMinyanimOnShabbat; // *** שדה חדש ***
 
   Room({
     this.id,
@@ -26,7 +26,7 @@ class Room {
     this.displayMode = MinyanDisplayMode.THIS_ROOM_ONLY,
     this.activeMessagePanels = 1,
     this.isDisplayActive = true,
-    this.showWeekdayMinyanimOnShabbat = false, // *** שינוי: ערך ברירת מחדל ***
+    this.showWeekdayMinyanimOnShabbat = false, // *** ערך ברירת מחדל ***
   });
 
   Map<String, dynamic> toMap() {
@@ -39,7 +39,7 @@ class Room {
       'display_mode': displayMode.name,
       'active_message_panels': activeMessagePanels,
       'is_display_active': isDisplayActive ? 1 : 0,
-      'show_weekday_minyanim_on_shabbat': showWeekdayMinyanimOnShabbat ? 1 : 0, // *** שינוי: הוספה למפה ***
+      'show_weekday_minyanim_on_shabbat': showWeekdayMinyanimOnShabbat ? 1 : 0, // *** הוספה למפה ***
     };
   }
 
@@ -56,7 +56,7 @@ class Room {
       ),
       activeMessagePanels: map['active_message_panels'] ?? 1,
       isDisplayActive: map['is_display_active'] == null ? true : map['is_display_active'] == 1,
-      showWeekdayMinyanimOnShabbat: map['show_weekday_minyanim_on_shabbat'] == null ? false : map['show_weekday_minyanim_on_shabbat'] == 1, // *** שינוי: המרה מהמפה ***
+      showWeekdayMinyanimOnShabbat: map['show_weekday_minyanim_on_shabbat'] == null ? false : map['show_weekday_minyanim_on_shabbat'] == 1, // *** המרה מהמפה ***
     );
   }
 }

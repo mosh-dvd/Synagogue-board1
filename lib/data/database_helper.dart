@@ -1,7 +1,8 @@
-// lib/data/database_helper.dart (קובץ מלא)
+// lib/data/database_helper.dart (קובץ מלא - ללא deleteDbFile)
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
+// import 'dart:io'; // *** נמחק הייבוא ***
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -13,13 +14,17 @@ class DatabaseHelper {
   static Future<void> init() async {
     if (_database != null) return;
     String path = join(await getDatabasesPath(), 'synagogue.db');
+    // *** קוד דיבוג זמני! העתק נתיב זה למחיקה ידנית! ***
+    print("CRITICAL DB PATH FOR DELETION: $path");
     _database = await openDatabase(
       path,
-      version: 12, // *** שינוי: עדכון גרסה ל-12 ***
+      version: 12, // *** גרסה 12 ***
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
+  
+  // *** פונקציה deleteDbFile נמחקה ***
 
   Future<Database> get database async {
     if (_database == null) await init();
@@ -87,7 +92,7 @@ class DatabaseHelper {
     }
     
     if (oldVersion < 12) {
-      await db.execute('ALTER TABLE rooms ADD COLUMN show_weekday_minyanim_on_shabbat INTEGER NOT NULL DEFAULT 0'); // *** שינוי: הוספת העמודה החדשה ***
+      await db.execute('ALTER TABLE rooms ADD COLUMN show_weekday_minyanim_on_shabbat INTEGER NOT NULL DEFAULT 0'); 
     }
   }
 

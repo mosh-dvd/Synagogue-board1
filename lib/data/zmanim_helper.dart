@@ -1,3 +1,4 @@
+// lib/data/zmanim_helper.dart (קובץ מלא)
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:intl/intl.dart';
 
@@ -58,22 +59,25 @@ class ZmanimHelper {
     return DateFormat('HH:mm').format(dt);
   }
 
-  static Map<RelativeZman, DateTime?> getZmanimDateTimes(String city) {
+  // *** שינוי: הוספת פרמטר אופציונלי date ***
+  static Map<RelativeZman, DateTime?> getZmanimDateTimes(String city, {DateTime? date}) {
     final cityData = _getCityData(city);
     if (cityData == null) {
       return {};
     }
 
+    final targetDate = date ?? DateTime.now(); // *** שימוש בפרמטר החדש ***
+    
     final location = GeoLocation();
     location.setLocationName(city);
     location.setLatitude(latitude: cityData['lat']!);
     location.setLongitude(longitude: cityData['lng']!);
     location.setElevation(cityData['elevation']!);
-    location.setDateTime(DateTime.now());
+    location.setDateTime(targetDate); // *** שימוש בפרמטר החדש ***
 
     final zmanimCalendar = ComplexZmanimCalendar.intGeoLocation(location);
 
-    final jewishCalendar = JewishCalendar.fromDateTime(DateTime.now());
+    final jewishCalendar = JewishCalendar.fromDateTime(targetDate); // *** שימוש בפרמטר החדש ***
     jewishCalendar.inIsrael = _isCityInIsrael(city);
 
     final Map<RelativeZman, DateTime?> times = {

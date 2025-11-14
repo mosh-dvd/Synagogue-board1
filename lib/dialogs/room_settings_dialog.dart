@@ -17,7 +17,7 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
   late bool _showZmanim;
   late MinyanDisplayMode _displayMode;
   late int _activeMessagePanels;
-  late bool _showWeekdayMinyanimOnShabbat; // *** שינוי: משתנה חדש ***
+  late bool _showWeekdayMinyanimOnShabbat; // *** משתנה חדש ***
 
   @override
   void initState() {
@@ -27,7 +27,7 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
     _showZmanim = widget.room.showZmanim;
     _displayMode = widget.room.displayMode;
     _activeMessagePanels = widget.room.activeMessagePanels;
-    _showWeekdayMinyanimOnShabbat = widget.room.showWeekdayMinyanimOnShabbat; // *** שינוי: אתחול משתנה חדש ***
+    _showWeekdayMinyanimOnShabbat = widget.room.showWeekdayMinyanimOnShabbat; // *** אתחול משתנה חדש ***
   }
 
   Future<void> _saveSettings() async {
@@ -40,7 +40,7 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
       displayMode: _displayMode,
       activeMessagePanels: _activeMessagePanels,
       isDisplayActive: widget.room.isDisplayActive,
-      showWeekdayMinyanimOnShabbat: _showWeekdayMinyanimOnShabbat, // *** שינוי: שמירת הערך החדש ***
+      showWeekdayMinyanimOnShabbat: _showWeekdayMinyanimOnShabbat, // *** שמירת הערך החדש ***
     );
     await DatabaseHelper().updateRoom(updatedRoom);
     Navigator.of(context).pop();
@@ -75,7 +75,7 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
               },
             ),
             
-            // *** שינוי: הוספת הגדרת תצוגת יום חול בשבת ***
+            // *** הוספת הגדרת תצוגת יום חול בשבת ***
             SwitchListTile(
               title: const Text('הצג מנייני יום חול גם בשבת/חג'),
               subtitle: const Text('מציג את מנייני יום חול (בנוסף למנייני שבת/חג)'),

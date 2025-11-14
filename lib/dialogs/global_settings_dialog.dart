@@ -1,7 +1,10 @@
-// lib/dialogs/global_settings_dialog.dart
+// lib/dialogs/global_settings_dialog.dart (קובץ מלא - ללא קוד מחיקת DB)
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/database_helper.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
+import 'package:provider/provider.dart';
+import 'package:synagogue_display/data/data_provider.dart';
+// import 'package:desktop_multi_window/desktop_multi_window.dart'; // *** נמחק הייבוא ***
 
 class GlobalSettingsDialog extends StatefulWidget {
   const GlobalSettingsDialog({Key? key}) : super(key: key);
@@ -31,6 +34,10 @@ class _GlobalSettingsDialogState extends State<GlobalSettingsDialog> {
     if (_selectedLocation != null) {
       await DatabaseHelper().updateSetting('location', _selectedLocation!);
     }
+    // רענון הנתונים הגלובליים לאחר שינוי מיקום (שישפיע על הזמנים)
+    if (mounted) {
+      Provider.of<DataProvider>(context, listen: false).fetchAllData();
+    }
     Navigator.of(context).pop();
   }
 
@@ -57,6 +64,11 @@ class _GlobalSettingsDialogState extends State<GlobalSettingsDialog> {
               });
             },
           ),
+          
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          
         ],
       ),
       actions: [

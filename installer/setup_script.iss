@@ -1,5 +1,5 @@
 [Setup]
-AppName=Synagogue Display
+AppName=to
 AppVersion=1.0.1
 AppPublisher=Mosh-DVD
 DefaultDirName={autopf}\Synagogue Display

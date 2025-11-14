@@ -1,4 +1,5 @@
 // lib/display_window.dart (קובץ מלא)
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -9,7 +10,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:synagogue_display/data/minyan_logic_helper.dart';
-import 'package:synagogue_display/data/models.dart';
+import 'package:synagogue_display/data/models.dart'; // *** ייבוא נכון ***
 import 'package:synagogue_display/data/zmanim_helper.dart';
 import 'package:synagogue_display/widgets/clock_widget.dart';
 import 'package:synagogue_display/widgets/hebcal_widget.dart';
@@ -134,24 +135,23 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final chatzosToday = zmanimDateTimes[RelativeZman.chatzos];
     List<MinyanScheduleType> activeScheduleTypes = [];
 
-    final isShabbat = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
-    final isErevShabbat = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
-    final isSunday = jewishCalendar.getDayOfWeek() == 1;
-
-    if (isShabbat) { // שבת / יום טוב
+    final isShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
+    final isErevShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
+    
+    // *** לוגיקת הסינון ב-display_window.dart ***
+    if (isShabbatOrYomTov) { // שבת / יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
             activeScheduleTypes = [MinyanScheduleType.MOTZEI_SHABBAT];
         } else {
             activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
         }
         
-        // *** שינוי: הוספת מנייני יום חול אם ההגדרה מופעלת ***
+        // הוספת מנייני יום חול אם ההגדרה מופעלת
         if (currentRoomSettings.showWeekdayMinyanimOnShabbat) {
           activeScheduleTypes.add(MinyanScheduleType.REGULAR);
         }
-        // *** סוף שינוי ***
         
-    } else if (isErevShabbat) { // ערב שבת / ערב יום טוב
+    } else if (isErevShabbatOrYomTov) { // ערב שבת / ערב יום טוב
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
             activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
         } else if (chatzosToday != null && now.isAfter(chatzosToday)) {
@@ -159,14 +159,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
         } else {
             activeScheduleTypes = [MinyanScheduleType.REGULAR];
         }
-    } else if (isSunday && sunsetToday != null && now.isBefore(sunsetToday)) { // יום ראשון (מוצאי שבת)
-         activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT];
-    } else { // יום חול רגיל (כולל יום ראשון אחרי שקיעה)
-        activeScheduleTypes = [MinyanScheduleType.REGULAR];
+    } else { // יום חול רגיל (כולל יום ראשון עד מוצאי שבת קודמת)
+        activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT]; 
     }
-    
+    // *** סוף לוגיקת הסינון ***
+
     List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) => activeScheduleTypes.contains(minyan.scheduleType)).toList();
     
+    // מיון לפי שעה
     todaysMinyanim.sort((a, b) => a.time!.compareTo(b.time!));
     
     List<Minyan> filteredMinyanim = (currentRoomSettings.displayMode == MinyanDisplayMode.ALL) ? todaysMinyanim : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
@@ -219,14 +219,26 @@ class _DisplayWindowState extends State<DisplayWindow> {
       required Color accentColor
   }) {
     List<Widget> minyanWidgets = [];
-    // *** שינוי: סדר ההצגה: REGULAR לפני SHABBAT_DAY ***
-    final orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
+    
+    final now = DateTime.now();
+    final jewishCalendar = JewishCalendar.fromDateTime(now);
+    final isShabbatOrChag = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
+    
+    // קביעת סדר מיון דינמי
+    List<MinyanScheduleType> orderedTypes;
+    if (isShabbatOrChag && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
+        // מציג את השבת/חג קודם, אח"כ את ה-REGULAR (מנייני השבוע), ואח"כ מוצ"ש
+        orderedTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT, MinyanScheduleType.EREV_SHABBAT];
+    } else {
+        // ביום חול: יום חול -> ערב שבת -> שבת -> מוצ"ש
+        orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
+    }
 
     for (var type in orderedTypes) {
       if (_groupedMinyanim.containsKey(type) && _groupedMinyanim[type]!.isNotEmpty) {
-        // *** שינוי: אם זה REGULAR בשבת, מציג כ"מנייני השבוע" במקום "תפילות ליום חול" ***
+        
         String title;
-        if (type == MinyanScheduleType.REGULAR && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
+        if (type == MinyanScheduleType.REGULAR && isShabbatOrChag && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
             title = 'מנייני השבוע';
         } else {
             title = _getScheduleTypeTitle(type);
@@ -438,7 +450,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading || _roomSettings == null || _location == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator()); 
     }
 
     const columnColor = Color(0xFFE3F2FD); // Light Blue Background
