@@ -12,29 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  # --- ג'וב לבניית גרסת ווינדוס ---
-  build-windows:
-    name: Build Windows App
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - name: Get Flutter dependencies
-        run: flutter pub get
-
-      - name: Build Windows
-        run: flutter build windows --release
-
-      - name: Setup Inno Setup
-        # Action שמוריד ומתקין את Inno Setup ליצירת קובץ התקנה
-# --- ג'וב לבניית גרסת ווינדוס ---
-  # --- ג'וב לבניית גרסת ווינדוס ---
+ # --- ג'וב לבניית גרסת ווינדוס ---
   build-windows:
     name: Build Windows App
     runs-on: windows-latest
@@ -65,6 +43,32 @@ jobs:
         with:
           name: windows-installer
           path: installer/Output/setup.exe
+          # מעלה את קובץ ההתקנה שנוצר
+          path: installer/Output/setup.exe
+
+  # --- ג'וב לבניית גרסת לינוקס ---
+  build-linux:
+    name: Build Linux App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Linux
+        run: flutter build linux --release
+
+      - name: Archive Linux build
         # יוצר קובץ zip מהתיקייה המקומפלת של לינוקס
         run: zip -r linux-build.zip build/linux/x64/release/bundle
 
