@@ -32,7 +32,6 @@ jobs:
         run: flutter build windows --release
 
       - name: Setup Inno Setup
-        # --- התיקון כאן ---
         uses: Amine-Smahi/setup-inno-setup@v1.0.1
 
       - name: Create Installer
@@ -42,8 +41,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: installer/Output/setup.exe
-          # מעלה את קובץ ההתקנה שנוצר
           path: installer/Output/setup.exe
 
   # --- ג'וב לבניית גרסת לינוקס ---
@@ -76,17 +73,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          # מעלה את קובץ ה-zip שנוצר
           path: linux-build.zip
 
   # --- ג'וב ליצירת ה-Release ופרסומו ---
   create-release:
     name: Create Release
-    # הג'וב הזה ירוץ רק אחרי ששני הג'ובים הקודמים הצליחו
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
-      # שלב 1: הורדת התוצרים (artifacts) מהג'ובים הקודמים
       - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
@@ -97,13 +91,10 @@ jobs:
         with:
           name: linux-build
 
-      # שלב 2: יצירת ה-Release וצירוף הקבצים שהורדנו
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          # משתמש בשם התגית שהפעילה את התהליך כשם הגרסה
           tag_name: ${{ github.ref_name }}
-          # רשימת הקבצים שיש לצרף לגרסה
           files: |
             setup.exe
             linux-build.zip
