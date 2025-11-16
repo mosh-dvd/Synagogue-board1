@@ -17,6 +17,7 @@ import 'package:synagogue_display/data/minyan_logic_helper.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 
+import 'package:synagogue_display/widgets/auto_scrolling_list_view.dart';
 import 'package:synagogue_display/widgets/clock_widget.dart';
 import 'package:synagogue_display/widgets/hebcal_widget.dart';
 import 'package:synagogue_display/widgets/message_carousel_widget.dart';
@@ -207,7 +208,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
     Map<MinyanScheduleType, Map<String, List<Minyan>>> categorizedMinyanim = {};
     for (final minyan in filteredMinyanim) {
       final scheduleType = minyan.scheduleType;
-      final prayerName = minyan.name;
+      // *** שינוי: ניקוי רווחים משם התפילה כדי למנוע כפילויות ***
+      final prayerName = minyan.name.trim();
       if (categorizedMinyanim[scheduleType] == null) categorizedMinyanim[scheduleType] = {};
       if (categorizedMinyanim[scheduleType]![prayerName] == null) categorizedMinyanim[scheduleType]![prayerName] = [];
       categorizedMinyanim[scheduleType]![prayerName]!.add(minyan);
@@ -344,6 +346,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final jewishCalendar = JewishCalendar.fromDateTime(now);
     final isShabbatOrChag = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
     
+    // *** שינוי: הגדרת סדר תפילות קבוע למיון ***
+    const weekdayPrayerOrder = ['שחרית', 'מנחה', 'ערבית'];
+    const shabbatPrayerOrder = ['ערבית', 'שחרית', 'מנחה'];
+    
     List<MinyanScheduleType> orderedTypes;
     if (isShabbatOrChag && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
         orderedTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT, MinyanScheduleType.EREV_SHABBAT];
@@ -365,6 +371,21 @@ class _DisplayWindowState extends State<DisplayWindow> {
         minyanWidgets.add(Divider(color: primaryTextColor.withOpacity(0.1), indent: 30, endIndent: 30, thickness: 1));
         
         final prayerGroups = _groupedMinyanim[type]!.entries.toList();
+
+        // *** שינוי: הוספת לוגיקת מיון מותאמת אישית ***
+        final prayerOrder = (type == MinyanScheduleType.SHABBAT_DAY || type == MinyanScheduleType.EREV_SHABBAT)
+            ? shabbatPrayerOrder
+            : weekdayPrayerOrder;
+
+        prayerGroups.sort((a, b) {
+          int indexA = prayerOrder.indexOf(a.key);
+          int indexB = prayerOrder.indexOf(b.key);
+          // אם התפילה לא נמצאת ברשימה, שים אותה בסוף
+          if (indexA == -1) indexA = prayerOrder.length;
+          if (indexB == -1) indexB = prayerOrder.length;
+          return indexA.compareTo(indexB);
+        });
+
         for (int i = 0; i < prayerGroups.length; i++) {
           final prayerName = prayerGroups[i].key;
           final minyanList = prayerGroups[i].value;
@@ -417,7 +438,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
             ),
             _groupedMinyanim.isEmpty 
               ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.rubik(fontSize: 24, color: primaryTextColor.withOpacity(0.6)))) 
-              : ListView( padding: const EdgeInsets.only(top: 8.0, bottom: 8.0), children: minyanWidgets, ),
+              : AutoScrollingListView(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                  children: minyanWidgets,
+                ),
           ],
         ),
       ), 
@@ -526,26 +550,26 @@ class _DisplayWindowState extends State<DisplayWindow> {
         Container(
           color: primaryTextColor.withOpacity(0.05),
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
+          // *** שינוי: סידור מחדש של שורת המניין הבא ***
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 _nextMinyan == null ? 'אין מניינים קרובים' : 'המניין הבא:', 
                 style: GoogleFonts.rubik(fontSize: 22, color: primaryTextColor.withOpacity(0.8))
               ),
-                
+              const SizedBox(width: 16),
               if (_nextMinyan != null) ...[
                 Text(
                   '${_nextMinyan!.minyan.name} - ${_nextMinyan!.minyan.roomName ?? 'חדר לא ידוע'}',
                   style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.bold, color: accentColor),
                 ),
+                const Spacer(), // Spacer ידחוף את הטיימר לקצה השמאלי
                 Text(
                   _nextMinyanCountdown,
                   style: GoogleFonts.tinos(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
                   textDirection: ui.TextDirection.ltr,
                 ),
-              ] else
-                const SizedBox.shrink(),
+              ],
             ],
           ),
         ),
