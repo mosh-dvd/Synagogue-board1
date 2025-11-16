@@ -1,22 +1,27 @@
-// lib/display_window.dart (קובץ מלא)
+// lib/display_window.dart
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:kosher_dart/kosher_dart.dart';
+import 'package:provider/provider.dart';
+
+import 'package:synagogue_display/data/data_provider.dart';
 import 'package:synagogue_display/data/minyan_logic_helper.dart';
-import 'package:synagogue_display/data/models.dart'; // *** ייבוא נכון ***
+import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
+
 import 'package:synagogue_display/widgets/clock_widget.dart';
 import 'package:synagogue_display/widgets/hebcal_widget.dart';
-import 'package:synagogue_display/widgets/zmanim_widget.dart';
 import 'package:synagogue_display/widgets/message_carousel_widget.dart';
-import 'package:kosher_dart/kosher_dart.dart';
+import 'package:synagogue_display/widgets/zmanim_widget.dart';
+
 
 class DisplayWindow extends StatefulWidget {
   final int windowId;
@@ -37,7 +42,6 @@ class DisplayWindow extends StatefulWidget {
 class _DisplayWindowState extends State<DisplayWindow> {
   Room? _roomSettings;
   Map<MinyanScheduleType, Map<String, List<Minyan>>> _groupedMinyanim = {};
-  List<Minyan> _allMinyanim = [];
   Map<int, List<Message>> _panelMessages = {};
   String? _location;
   bool _isLoading = true;
@@ -50,16 +54,23 @@ class _DisplayWindowState extends State<DisplayWindow> {
   void initState() {
     super.initState();
     _startNextMinyanTimer();
+    
     DesktopMultiWindow.setMethodHandler((call, fromWindowId) async {
       if (call.method == 'update_data') {
         if (call.arguments != _previousPayload) {
           _previousPayload = call.arguments;
-          final Map<String, dynamic> payload = jsonDecode(call.arguments);
-          _processPayload(payload);
+          Provider.of<DataProvider>(context, listen: false).fetchAllData();
         }
       }
       return "";
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dataProvider = Provider.of<DataProvider>(context);
+    _processPayloadFromProvider(dataProvider);
   }
 
   @override
@@ -69,15 +80,25 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   void _startNextMinyanTimer() {
-    _updateNextMinyan();
-    _nextMinyanTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _tick();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateNextMinyan();
+        _nextMinyanTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          _tick();
+        });
     });
   }
 
   void _updateNextMinyan() {
-    if (_allMinyanim.isEmpty || _location == null) return;
-    final foundMinyan = MinyanLogicHelper.findNextMinyan(_allMinyanim, _location!);
+    if (!mounted) return;
+    
+    final dataProvider = Provider.of<DataProvider>(context, listen: false);
+    final allMinyanim = dataProvider.minyanim;
+    final location = dataProvider.location;
+    final simulationTime = dataProvider.simulationDate;
+    
+    if (allMinyanim.isEmpty || location.isEmpty) return;
+    
+    final foundMinyan = MinyanLogicHelper.findNextMinyan(allMinyanim, location, simulationTime);
     if (mounted && (foundMinyan?.minyan.id != _nextMinyan?.minyan.id)) {
       setState(() {
         _nextMinyan = foundMinyan;
@@ -86,17 +107,24 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   void _tick() {
+    if (!mounted) return;
+    
+    final dataProvider = Provider.of<DataProvider>(context, listen: false);
+    final simulationTime = dataProvider.simulationDate;
+    
     if (_nextMinyan == null) {
-      if (DateTime.now().second % 30 == 0) {
+      if (simulationTime.second % 30 == 0) { 
         _updateNextMinyan();
       }
       return;
     }
-    final difference = _nextMinyan!.dateTime.difference(DateTime.now());
+    
+    final difference = _nextMinyan!.dateTime.difference(simulationTime); 
     if (difference.isNegative) {
       _updateNextMinyan();
       return;
     }
+    
     final hours = difference.inHours;
     final minutes = difference.inMinutes.remainder(60);
     final seconds = difference.inSeconds.remainder(60);
@@ -107,17 +135,27 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
   }
 
-  void _processPayload(Map<String, dynamic> payload) {
+  void _processPayloadFromProvider(DataProvider dataProvider) {
     if (!mounted) return;
-    final roomData = (payload['rooms'] as List).firstWhere((r) => r['id'] == widget.roomId, orElse: () => null);
-    if (roomData == null) {
-      setState(() => _isLoading = false);
+
+    final allRooms = dataProvider.rooms;
+    final allMinyanim = dataProvider.minyanim;
+    final links = dataProvider.messageLinks;
+    final location = dataProvider.location;
+    final now = dataProvider.simulationDate; 
+    
+    final roomData = allRooms.firstWhere(
+        (r) => r.id == widget.roomId, 
+        orElse: () => Room(id: -1, name: 'חדר לא נמצא')
+    );
+    
+    if (roomData.id == -1) {
+      _updateLocalState(null, {}, {}, location);
       return;
     }
-    final currentRoomSettings = Room.fromMap(roomData);
-    final location = payload['location'] as String? ?? 'ירושלים';
-    final allMinyanim = (payload['minyanim'] as List).map((m) => Minyan.fromMap(m)).toList();
-    final zmanimDateTimes = ZmanimHelper.getZmanimDateTimes(location);
+    final currentRoomSettings = roomData;
+    
+    final zmanimDateTimes = ZmanimHelper.getZmanimDateTimes(location, date: now);
     final processedMinyanim = allMinyanim.map((minyan) {
       if (minyan.timeType == MinyanTimeType.RELATIVE && minyan.relativeZman != null) {
         final zmanTime = zmanimDateTimes[minyan.relativeZman!];
@@ -129,7 +167,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
       return minyan;
     }).where((m) => m.time != null).toList();
 
-    final now = DateTime.now();
     final jewishCalendar = JewishCalendar.fromDateTime(now);
     final sunsetToday = zmanimDateTimes[RelativeZman.sunset];
     final chatzosToday = zmanimDateTimes[RelativeZman.chatzos];
@@ -138,20 +175,18 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final isShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
     final isErevShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
     
-    // *** לוגיקת הסינון ב-display_window.dart ***
-    if (isShabbatOrYomTov) { // שבת / יום טוב
+    if (isShabbatOrYomTov) { 
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
             activeScheduleTypes = [MinyanScheduleType.MOTZEI_SHABBAT];
         } else {
             activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
         }
         
-        // הוספת מנייני יום חול אם ההגדרה מופעלת
         if (currentRoomSettings.showWeekdayMinyanimOnShabbat) {
           activeScheduleTypes.add(MinyanScheduleType.REGULAR);
         }
         
-    } else if (isErevShabbatOrYomTov) { // ערב שבת / ערב יום טוב
+    } else if (isErevShabbatOrYomTov) { 
         if (sunsetToday != null && now.isAfter(sunsetToday)) {
             activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
         } else if (chatzosToday != null && now.isAfter(chatzosToday)) {
@@ -159,14 +194,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
         } else {
             activeScheduleTypes = [MinyanScheduleType.REGULAR];
         }
-    } else { // יום חול רגיל (כולל יום ראשון עד מוצאי שבת קודמת)
+    } else { 
         activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT]; 
     }
-    // *** סוף לוגיקת הסינון ***
 
     List<Minyan> todaysMinyanim = processedMinyanim.where((minyan) => activeScheduleTypes.contains(minyan.scheduleType)).toList();
     
-    // מיון לפי שעה
     todaysMinyanim.sort((a, b) => a.time!.compareTo(b.time!));
     
     List<Minyan> filteredMinyanim = (currentRoomSettings.displayMode == MinyanDisplayMode.ALL) ? todaysMinyanim : todaysMinyanim.where((m) => m.roomId == widget.roomId).toList();
@@ -179,8 +212,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
       if (categorizedMinyanim[scheduleType]![prayerName] == null) categorizedMinyanim[scheduleType]![prayerName] = [];
       categorizedMinyanim[scheduleType]![prayerName]!.add(minyan);
     }
-    final allMessages = (payload['messages'] as List).map((m) => Message.fromMap(m)).toList();
-    final links = payload['message_links'] as Map<String, dynamic>;
+    final allMessages = dataProvider.messages;
+    
     Map<int, List<Message>> categorizedMessages = {1: [], 2: [], 3: [], 4: []};
     for (final message in allMessages) {
       if (!message.isActive) continue;
@@ -193,15 +226,21 @@ class _DisplayWindowState extends State<DisplayWindow> {
         }
       }
     }
-    setState(() {
-      _roomSettings = currentRoomSettings;
-      _groupedMinyanim = categorizedMinyanim;
-      _allMinyanim = allMinyanim;
-      _panelMessages = categorizedMessages;
-      _location = location;
-      _isLoading = false;
-    });
+    
+    _updateLocalState(currentRoomSettings, categorizedMinyanim, categorizedMessages, location);
     _updateNextMinyan();
+  }
+  
+  void _updateLocalState(Room? roomSettings, Map<MinyanScheduleType, Map<String, List<Minyan>>> groupedMinyanim, Map<int, List<Message>> panelMessages, String location) {
+    if (mounted) {
+      setState(() {
+        _roomSettings = roomSettings;
+        _groupedMinyanim = groupedMinyanim;
+        _panelMessages = panelMessages;
+        _location = location;
+        _isLoading = roomSettings == null;
+      });
+    }
   }
 
   String _getScheduleTypeTitle(MinyanScheduleType type) {
@@ -212,6 +251,87 @@ class _DisplayWindowState extends State<DisplayWindow> {
       case MinyanScheduleType.MOTZEI_SHABBAT: return 'תפילות למוצאי שבת';
     }
   }
+  
+  @override
+  Widget build(BuildContext context) {
+    Provider.of<DataProvider>(context); 
+    
+    if (_isLoading || _roomSettings == null || _location == null) {
+      return const Center(child: CircularProgressIndicator()); 
+    }
+
+    const columnColor = Color(0xFFE3F2FD);
+    const cardBackgroundColor = Color(0xFFB3E5FC);
+    const primaryTextColor = Color(0xFF37474F);
+    const accentColor = Color(0xFF0D47A1);
+
+    final minyanimColumn = _buildMinyanimColumn(
+      cardBackgroundColor: cardBackgroundColor,
+      primaryTextColor: primaryTextColor,
+      accentColor: accentColor,
+    );
+
+    final zmanimWidget = _roomSettings!.showZmanim && _location != null
+        ? ZmanimWidget(location: _location!)
+        : null;
+
+    final hasSidebar = zmanimWidget != null;
+
+    return Directionality(
+      textDirection: ui.TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: columnColor,
+        body: Column(
+          children: [
+            _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor),
+            
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: minyanimColumn,
+                    ),
+                    const SizedBox(width: 16),
+                    
+                    Expanded(
+                      flex: 2,
+                      child: _buildMessageLayout(),
+                    ),
+                    const SizedBox(width: 16),
+                    
+                    if (hasSidebar)
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          children: [
+                            if (zmanimWidget != null)
+                               Expanded(
+                                  flex: 1,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 16.0),
+                                    child: AspectRatio(
+                                      aspectRatio: 1 / 1.5,
+                                      child: zmanimWidget,
+                                    ),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      )
+                    else 
+                      const SizedBox.shrink(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildMinyanimColumn({
       required Color cardBackgroundColor,
@@ -220,17 +340,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }) {
     List<Widget> minyanWidgets = [];
     
-    final now = DateTime.now();
+    final now = Provider.of<DataProvider>(context).simulationDate;
     final jewishCalendar = JewishCalendar.fromDateTime(now);
     final isShabbatOrChag = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
     
-    // קביעת סדר מיון דינמי
     List<MinyanScheduleType> orderedTypes;
     if (isShabbatOrChag && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
-        // מציג את השבת/חג קודם, אח"כ את ה-REGULAR (מנייני השבוע), ואח"כ מוצ"ש
         orderedTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT, MinyanScheduleType.EREV_SHABBAT];
     } else {
-        // ביום חול: יום חול -> ערב שבת -> שבת -> מוצ"ש
         orderedTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
     }
 
@@ -310,7 +427,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
   Widget _buildMessagePanel(List<Message> messages) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7), // צבע אפור בהיר
+        color: const Color(0xFFFFF7F7),
         borderRadius: BorderRadius.circular(11),
       ),
       child: messages.isEmpty
@@ -322,45 +439,41 @@ class _DisplayWindowState extends State<DisplayWindow> {
   Widget _buildMessageLayout() {
     
     final panels = [
-      _buildMessagePanel(_panelMessages[1] ?? []), // חלונית 1
-      _buildMessagePanel(_panelMessages[2] ?? []), // חלונית 2
-      if (_roomSettings!.activeMessagePanels >= 3) _buildMessagePanel(_panelMessages[3] ?? []), // חלונית 3
-      if (_roomSettings!.activeMessagePanels == 4) _buildMessagePanel(_panelMessages[4] ?? []), // חלונית 4
+      _buildMessagePanel(_panelMessages[1] ?? []),
+      _buildMessagePanel(_panelMessages[2] ?? []),
+      if (_roomSettings!.activeMessagePanels >= 3) _buildMessagePanel(_panelMessages[3] ?? []),
+      if (_roomSettings!.activeMessagePanels == 4) _buildMessagePanel(_panelMessages[4] ?? []),
     ];
     
     const double spacing = 12.0; 
     
-    // אם יש רק חלונית 1 פעילה
     if (_roomSettings!.activeMessagePanels == 1) {
        return panels[0];
     }
     
     List<Widget> messageWidgets = [];
 
-    // שורה עליונה (חלוניות 1 ו-2)
     if (_roomSettings!.activeMessagePanels >= 2) {
         messageWidgets.add(
             Expanded(
                 child: Row(
                     children: [
-                        Expanded(child: panels[1]), // חלונית 2 (שמאל עליון)
+                        Expanded(child: panels[1]),
                         const SizedBox(width: spacing), 
-                        Expanded(child: panels[0]), // חלונית 1 (ימין עליון)
+                        Expanded(child: panels[0]),
                     ],
                 ),
             ),
         );
-        // מרווח בין השורות
         if (_roomSettings!.activeMessagePanels >= 3) {
             messageWidgets.add(const SizedBox(height: spacing));
         }
     }
     
-    // שורה תחתונה (חלוניות 3 ו-4)
     if (_roomSettings!.activeMessagePanels == 3) {
        messageWidgets.add(
             Expanded(
-                child: panels[2], // חלונית 3 (למטה)
+                child: panels[2],
             ),
        );
     } else if (_roomSettings!.activeMessagePanels == 4) {
@@ -368,9 +481,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
             Expanded(
                 child: Row(
                      children: [
-                        Expanded(child: panels[3]), // חלונית 4 (שמאל תחתון)
+                        Expanded(child: panels[3]),
                         const SizedBox(width: spacing),
-                        Expanded(child: panels[2]), // חלונית 3 (ימין תחתון)
+                        Expanded(child: panels[2]),
                      ],
                 ),
             ),
@@ -384,7 +497,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   Widget _buildHeaderTitle({ required Color primaryTextColor, required Color accentColor }) {
     
-    // שורה 1: כותרת ראשית (שעון, תאריך עברי מלא, שם החדר)
     return Column(
       children: [
         Container(
@@ -393,19 +505,16 @@ class _DisplayWindowState extends State<DisplayWindow> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. שעון (ימין למעלה)
               if (_roomSettings!.showClock) 
                 const ClockWidget()
               else
                 const SizedBox.shrink(),
                 
-              // 2. כותרת החדר (אמצע, גדולה)
               Text(
                 widget.title,
                 style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.bold, color: primaryTextColor),
               ),
               
-              // 3. תאריך עברי מלא (שמאל למעלה)
               if (_roomSettings!.showCalendar) 
                 const HebcalWidget()
               else
@@ -414,20 +523,17 @@ class _DisplayWindowState extends State<DisplayWindow> {
           ),
         ),
         
-        // שורה 2: המניין הבא (רצועה כחולה בהירה)
         Container(
-          color: primaryTextColor.withOpacity(0.05), // רקע עדין
+          color: primaryTextColor.withOpacity(0.05),
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 1. טקסט "אין מניינים קרובים" / מניין הבא
               Text(
                 _nextMinyan == null ? 'אין מניינים קרובים' : 'המניין הבא:', 
                 style: GoogleFonts.rubik(fontSize: 22, color: primaryTextColor.withOpacity(0.8))
               ),
                 
-              // 2. פרטי המניין
               if (_nextMinyan != null) ...[
                 Text(
                   '${_nextMinyan!.minyan.name} - ${_nextMinyan!.minyan.roomName ?? 'חדר לא ידוע'}',
@@ -444,91 +550,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
           ),
         ),
       ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading || _roomSettings == null || _location == null) {
-      return const Center(child: CircularProgressIndicator()); 
-    }
-
-    const columnColor = Color(0xFFE3F2FD); // Light Blue Background
-    const cardBackgroundColor = Color(0xFFB3E5FC); // Lighter Blue Card
-    const primaryTextColor = Color(0xFF37474F); // Dark Slate Text
-    const accentColor = Color(0xFF0D47A1); // Deep Blue Accent
-
-    final minyanimColumn = _buildMinyanimColumn(
-      cardBackgroundColor: cardBackgroundColor,
-      primaryTextColor: primaryTextColor,
-      accentColor: accentColor,
-    );
-
-    final zmanimWidget = _roomSettings!.showZmanim && _location != null
-        ? ZmanimWidget(location: _location!)
-        : null;
-
-    final hasSidebar = zmanimWidget != null;
-
-    // הפריסה הראשית: ימין (מניינים) : מרכז (הודעות) : שמאל (זמנים)
-    return Directionality(
-      textDirection: ui.TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: columnColor,
-        body: Column(
-          children: [
-            // הכותרת הראשית + המניין הבא
-            _buildHeaderTitle(primaryTextColor: primaryTextColor, accentColor: accentColor),
-            
-            // אזור התצוגה הראשי
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    // עמודה ימנית: מניינים
-                    Expanded(
-                      flex: 1, // טור צר
-                      child: minyanimColumn,
-                    ),
-                    const SizedBox(width: 16),
-                    
-                    // עמודה מרכזית: הודעות (החלק הרחב)
-                    Expanded(
-                      flex: 2, // טור רחב
-                      child: _buildMessageLayout(), // הודעות בלבד
-                    ),
-                    const SizedBox(width: 16),
-                    
-                    // עמודה שמאלית: זמנים
-                    if (hasSidebar) // מציג רק אם ווידג'ט זמנים פעיל
-                      Expanded(
-                        flex: 1, // טור צר
-                        child: Column(
-                          children: [
-                            if (zmanimWidget != null)
-                               Expanded(
-                                  flex: 1,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 16.0),
-                                    child: AspectRatio(
-                                      aspectRatio: 1 / 1.5,
-                                      child: zmanimWidget,
-                                    ),
-                                  ),
-                                ),
-                          ],
-                        ),
-                      )
-                    else 
-                      const SizedBox.shrink(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

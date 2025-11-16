@@ -26,8 +26,6 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
   String? _finalFileName;
   bool _isConverting = false;
   int _panelIndex = 1;
-  
-  // [תיקון] משתנה מקומי לשמירה זמנית של סוג ההודעה הסופי
   MessageType _finalType = MessageType.TEXT; 
 
   List<Room> _allRooms = [];
@@ -55,9 +53,10 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
   }
 
   Future<void> _loadInitialData() async {
-    _allRooms = await DatabaseHelper().getRooms();
+    final dbHelper = DatabaseHelper();
+    _allRooms = await dbHelper.getRooms();
     if (widget.message != null) {
-      _selectedRoomIds = await DatabaseHelper().getLinkedRoomIdsForMessage(widget.message!.id!);
+      _selectedRoomIds = await dbHelper.getLinkedRoomIdsForMessage(widget.message!.id!);
     }
     if (mounted) {
       setState(() {});
@@ -103,14 +102,13 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
         final imageBaseName = p.basenameWithoutExtension(originalFileName);
         final outputImagePath = p.join(mediaDir.path, imageBaseName);
 
-        // שימו לב: שימוש בתוכנה חיצונית (pdftoppm). אם היא לא מותקנת, זה ייכשל.
         final processResult = await Process.run('pdftoppm', [
           '-png', '-f', '1', '-l', '1', sourcePath, outputImagePath,
         ]);
 
         if (processResult.exitCode == 0) {
           fileNameToSave = '$imageBaseName-1.png';
-          _finalType = MessageType.IMAGE; // [תיקון] שימוש ב-_finalType
+          _finalType = MessageType.IMAGE;
         } else {
           String errorMessage = 'שגיאה בהמרת קובץ ה-PDF';
           if (processResult.stderr.toString().toLowerCase().contains('not found')) {
@@ -124,14 +122,12 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
         }
       } else {
         final newFile = File(p.join(mediaDir.path, originalFileName));
-        // בדיקה אם הקובץ קיים כבר במקום היעד
         if (await newFile.exists()) {
-          // מחיקה כדי למנוע קריסה בהעתקה אם קובץ קיים
           await newFile.delete(); 
         }
         await File(sourcePath).copy(newFile.path);
         fileNameToSave = originalFileName;
-        _finalType = MessageType.IMAGE; // [תיקון] שימוש ב-_finalType
+        _finalType = MessageType.IMAGE;
       }
 
       setState(() {
@@ -160,7 +156,6 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
         return;
       }
       content = _finalFileName!;
-      // [תיקון] שימוש בערך שנשמר במהלך _pickFile
       finalType = _finalType; 
     }
 
@@ -174,15 +169,16 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
       panelIndex: _panelIndex,
     );
 
+    final dbHelper = DatabaseHelper();
     int messageId;
     if (widget.message == null) {
-      messageId = await DatabaseHelper().insertMessage(message);
+      messageId = await dbHelper.insertMessage(message);
     } else {
       messageId = message.id!;
-      await DatabaseHelper().updateMessage(message);
+      await dbHelper.updateMessage(message);
     }
 
-    await DatabaseHelper().linkMessageToRooms(messageId, _selectedRoomIds);
+    await dbHelper.linkMessageToRooms(messageId, _selectedRoomIds);
 
     Navigator.of(context).pop(true);
   }
@@ -261,13 +257,11 @@ class _MessageEditDialogState extends State<MessageEditDialog> {
                 decoration: const InputDecoration(labelText: 'שייך לחלונית'),
               ),
               
-              // --- הוספה: טקסט הסבר / אזהרה ---
               const SizedBox(height: 8),
               Text(
                 'ודאו שבמסכים הרלוונטיים מוגדרת פריסה התומכת בחלונית זו.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              // --- סוף ההוספה ---
 
               SwitchListTile(
                 title: const Text('פעיל'),

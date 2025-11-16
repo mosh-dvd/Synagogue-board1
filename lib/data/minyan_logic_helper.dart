@@ -14,12 +14,11 @@ class MinyanWithTime {
 
 class MinyanLogicHelper {
   
-  // *** פונקציה חדשה: מציאת מניינים רלוונטיים ליום ספציפי ***
+  // *** שינוי: קבלת תאריך הדמיה אופציונלי ***
   static List<MinyanWithTime> _getUpcomingMinyanimForDay(
-      DateTime day, List<Minyan> allMinyanim, String location, MinyanScheduleType primaryScheduleType, {bool includeRegularInShabbat = false}) {
+      DateTime day, List<Minyan> allMinyanim, String location, MinyanScheduleType primaryScheduleType, DateTime now, {bool includeRegularInShabbat = false}) {
       
     final zmanimForDay = ZmanimHelper.getZmanimDateTimes(location, date: day); 
-    final now = DateTime.now();
     final isToday = day.day == now.day && day.month == now.month && day.year == now.year;
     
     // קביעת סוגי המניינים הנדרשים לחישוב
@@ -35,7 +34,7 @@ class MinyanLogicHelper {
         scheduleTypesToInclude.add(MinyanScheduleType.MOTZEI_SHABBAT);
     }
     
-    // *** שינוי: הוספת REGULAR בשבת/חג רק לחישוב המניין הבא - נשאר כרגע כהגדרה גלובלית, אך תתוקן בהמשך ב-findNextMinyan ***
+    // הוספת REGULAR בשבת/חג רק לחישוב המניין הבא
     if (includeRegularInShabbat && !scheduleTypesToInclude.contains(MinyanScheduleType.REGULAR)) {
         scheduleTypesToInclude.add(MinyanScheduleType.REGULAR);
     }
@@ -72,12 +71,13 @@ class MinyanLogicHelper {
   }
   // *** סוף פונקציה חדשה ***
 
-  static MinyanWithTime? findNextMinyan(List<Minyan> allMinyanim, String location) {
+  // *** שינוי: שימוש ב-DataProvider עבור now ***
+  static MinyanWithTime? findNextMinyan(List<Minyan> allMinyanim, String location, [DateTime? simulationTime]) {
     if (allMinyanim.isEmpty) return null;
 
-    final now = DateTime.now();
+    final now = simulationTime ?? DateTime.now(); // *** שימוש בזמן הדמיה ***
     final jewishCalendar = JewishCalendar.fromDateTime(now);
-    final zmanimForToday = ZmanimHelper.getZmanimDateTimes(location);
+    final zmanimForToday = ZmanimHelper.getZmanimDateTimes(location, date: now);
     final sunsetToday = zmanimForToday[RelativeZman.sunset];
     final chatzosToday = zmanimForToday[RelativeZman.chatzos]; 
     
@@ -110,17 +110,15 @@ class MinyanLogicHelper {
     // 2. מציאת מניינים רלוונטיים להיום שטרם התחילו
     List<MinyanWithTime> upcomingToday;
     
-    // *** שינוי קריטי: אם זה שבת/חג/מוצ"ש, אנחנו רוצים רק את מנייני השבת/חג/מוצ"ש ***
-    // מנייני יום חול (REGULAR) מוצגים רק בלוח המניינים, לא ב"מניין הבא"
+    // בחיפוש המניין הבא בשבת/מוצ"ש, אנחנו מתעלמים מ-REGULAR באופן גורף
     if (primaryScheduleTypeToday == MinyanScheduleType.SHABBAT_DAY || primaryScheduleTypeToday == MinyanScheduleType.MOTZEI_SHABBAT) {
-        // בחיפוש המניין הבא בשבת/מוצ"ש, אנחנו מתעלמים מ-REGULAR באופן גורף
         upcomingToday = _getUpcomingMinyanimForDay(
-            today, allMinyanim, location, primaryScheduleTypeToday, includeRegularInShabbat: false
+            today, allMinyanim, location, primaryScheduleTypeToday, now, includeRegularInShabbat: false
         );
     } else {
         // ביום חול וערב שבת, הלוגיקה נשארת כפי שהייתה
         upcomingToday = _getUpcomingMinyanimForDay(
-            today, allMinyanim, location, primaryScheduleTypeToday, includeRegularInShabbat: false
+            today, allMinyanim, location, primaryScheduleTypeToday, now, includeRegularInShabbat: false
         );
     }
     
@@ -143,12 +141,12 @@ class MinyanLogicHelper {
     }
     
     // מציאת המניין הראשון של מחר
-    // *** שינוי קריטי: מוסיף את REGULAR אם המניין של מחר אמור להיות REGULAR (שחרית של יום ראשון) ***
     List<MinyanWithTime> upcomingTomorrow = _getUpcomingMinyanimForDay(
         tomorrow, 
         allMinyanim, 
         location, 
         primaryScheduleTypeTomorrow,
+        now, 
         // אם מחר הוא יום חול, אנחנו רוצים את מנייני REGULAR שלו
         includeRegularInShabbat: primaryScheduleTypeTomorrow == MinyanScheduleType.REGULAR 
     );

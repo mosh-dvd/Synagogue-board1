@@ -1,4 +1,5 @@
-// lib/data/zmanim_helper.dart (קובץ מלא)
+// lib/data/zmanim_helper.dart
+
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:intl/intl.dart';
 
@@ -59,31 +60,31 @@ class ZmanimHelper {
     return DateFormat('HH:mm').format(dt);
   }
 
-  // *** שינוי: הוספת פרמטר אופציונלי date ***
   static Map<RelativeZman, DateTime?> getZmanimDateTimes(String city, {DateTime? date}) {
     final cityData = _getCityData(city);
     if (cityData == null) {
       return {};
     }
 
-    final targetDate = date ?? DateTime.now(); // *** שימוש בפרמטר החדש ***
+    final targetDate = date ?? DateTime.now(); 
     
     final location = GeoLocation();
     location.setLocationName(city);
     location.setLatitude(latitude: cityData['lat']!);
     location.setLongitude(longitude: cityData['lng']!);
     location.setElevation(cityData['elevation']!);
-    location.setDateTime(targetDate); // *** שימוש בפרמטר החדש ***
+    location.setDateTime(targetDate); 
 
     final zmanimCalendar = ComplexZmanimCalendar.intGeoLocation(location);
 
-    final jewishCalendar = JewishCalendar.fromDateTime(targetDate); // *** שימוש בפרמטר החדש ***
+    final jewishCalendar = JewishCalendar.fromDateTime(targetDate); 
     jewishCalendar.inIsrael = _isCityInIsrael(city);
 
     final Map<RelativeZman, DateTime?> times = {
       RelativeZman.alos: zmanimCalendar.getAlosHashachar(),
       RelativeZman.sunrise: zmanimCalendar.getSunrise(),
       RelativeZman.sofZmanShmaGRA: zmanimCalendar.getSofZmanShmaGRA(),
+      // *** התיקון הקריטי נמצא כאן ***
       RelativeZman.sofZmanTfilaGRA: zmanimCalendar.getSofZmanTfilaGRA(),
       RelativeZman.chatzos: zmanimCalendar.getChatzos(),
       RelativeZman.minchaGedola: zmanimCalendar.getMinchaGedola(),
@@ -97,8 +98,8 @@ class ZmanimHelper {
     return times;
   }
 
-  static Map<String, String> calculateDailyTimes(String city) {
-    final rawTimes = getZmanimDateTimes(city);
+  static Map<String, String> calculateDailyTimes(String city, {DateTime? date}) {
+    final rawTimes = getZmanimDateTimes(city, date: date);
     final Map<String, String> formattedTimes = {};
     
     rawTimes.forEach((zman, time) {
@@ -107,8 +108,10 @@ class ZmanimHelper {
       }
     });
     
+    final targetDate = date ?? DateTime.now();
+    final jewishCalendar = JewishCalendar.fromDateTime(targetDate);
+    
     if (rawTimes.containsKey(RelativeZman.tzais)) {
-        final jewishCalendar = JewishCalendar.fromDateTime(DateTime.now());
         if (jewishCalendar.isYomTov() || jewishCalendar.getDayOfWeek() == 7) {
             formattedTimes['צאת שבת/חג'] = _formatTime(rawTimes[RelativeZman.tzais]);
         }

@@ -22,8 +22,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Synagogue Display"; Filename: "{app}\synagogue_display.exe"
-Name: "{autodesktop}\Synagogue Display"; Filename: "{app}\synagogue_display.exe"; Tasks: desktopicon
+Name: "{group}\Synagogue Display"; Filename: "{app}\to.exe"
+Name: "{autodesktop}\Synagogue Display"; Filename: "{app}\to.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\synagogue_display.exe"; Description: "{cm:LaunchProgram,Synagogue Display}"; Flags: nowait postinstall skipifsilent
