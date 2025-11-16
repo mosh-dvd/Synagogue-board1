@@ -2,7 +2,7 @@
 AppName=to
 AppVersion=1.0.1
 AppPublisher=Mosh-DVD
-DefaultDirName={autopf}\Synagogue Display
+DefaultDirName={autopf}\to
 AppId={{ synagogue_display_guid }}
 OutputDir=Output
 OutputBaseFilename=setup
@@ -26,4 +26,4 @@ Name: "{group}\Synagogue Display"; Filename: "{app}\to.exe"
 Name: "{autodesktop}\Synagogue Display"; Filename: "{app}\to.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\synagogue_display.exe"; Description: "{cm:LaunchProgram,Synagogue Display}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\to.exe"; Description: "{cm:LaunchProgram,Synagogue Display}"; Flags: nowait postinstall skipifsilent
