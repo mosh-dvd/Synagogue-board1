@@ -12,8 +12,17 @@ class AppLogger {
   static Future<void> init() async {
     if (kReleaseMode) { // רק במצב ריצה, לא בפיתוח
       try {
-        final directory = await getApplicationSupportDirectory();
-        final logDirectory = Directory(p.join(directory.path, 'logs'));
+        // *** שינוי עיקרי: מציאת הנתיב של תיקיית התוכנה ***
+        
+        // 1. קבלת הנתיב של קובץ ההפעלה של התוכנה
+        final String exePath = Platform.script.toFilePath();
+        
+        // 2. מתוך הנתיב המלא, חילוץ הנתיב של התיקייה בלבד
+        final String exeDir = p.dirname(exePath);
+
+        // 3. יצירת תיקיית 'logs' בתוך תיקיית התוכנה
+        final logDirectory = Directory(p.join(exeDir, 'logs'));
+        
         if (!await logDirectory.exists()) {
           await logDirectory.create(recursive: true);
         }
@@ -30,7 +39,7 @@ class AppLogger {
           return true;
         };
 
-        logInfo('Logger initialized successfully.');
+        logInfo('Logger initialized successfully in application directory.');
       } catch (e, stack) {
         print('Failed to initialize logger: $e');
         print(stack);
@@ -54,16 +63,13 @@ class AppLogger {
       final timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
       final logEntry = '$timestamp [$level]: $message\n\n';
 
-      // הדפסה לקונסול תמיד (שימושי לפיתוח)
       print(logEntry);
 
-      // כתיבה לקובץ רק במצב ריצה
       if (kReleaseMode && _logFile != null) {
         if (await _logFile!.exists()) {
           final fileSize = await _logFile!.length();
-          const maxFileSize = 10 * 1024 * 1024; // מגבלה של 10MB
+          const maxFileSize = 10 * 1024 * 1024; // 10MB
           if (fileSize > maxFileSize) {
-             // איפוס קובץ הלוג ומניעת גדילה מופרזת
             await _logFile!.writeAsString('--- Log file reset due to excessive size ($fileSize bytes) ---\n', mode: FileMode.write);
           }
         }
