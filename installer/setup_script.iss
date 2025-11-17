@@ -1,4 +1,5 @@
 [Setup]
+PrivilegesRequired=admin
 AppName=to
 AppVersion=1.0.1
 AppPublisher=Mosh-DVD

@@ -525,7 +525,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                 
               Text(
                 widget.title,
-                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 36, fontWeight: FontWeight.bold, color: theme.primaryTextColor),
+                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 36, fontWeight: FontWeight.bold, color: theme.highlightColor),
               ),
               
               if (_roomSettings!.showCalendar) 

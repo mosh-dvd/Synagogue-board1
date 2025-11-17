@@ -208,6 +208,7 @@ class DisplayTheme {
   final Color primaryTextColor;
   final Color accentColor;
   final Color borderColor;
+  final Color highlightColor;
   final String primaryFont;
   final String secondaryFont;
   final double borderWidth;
@@ -221,6 +222,7 @@ class DisplayTheme {
     required this.primaryTextColor,
     required this.accentColor,
     required this.borderColor,
+    required this.highlightColor,
     required this.primaryFont,
     required this.secondaryFont,
     required this.borderWidth,
@@ -235,6 +237,7 @@ class DisplayTheme {
       primaryTextColor: const Color(0xFF37474F),
       accentColor: const Color(0xFF0D47A1),
       borderColor: const Color(0xFF37474F).withOpacity(0.4),
+      highlightColor: const Color(0xFFFFD700),
       primaryFont: 'Rubik',
       secondaryFont: 'Tinos',
       borderWidth: 3.0,
@@ -251,6 +254,7 @@ class DisplayTheme {
       'primaryTextColor': primaryTextColor.value,
       'accentColor': accentColor.value,
       'borderColor': borderColor.value,
+      'highlightColor': highlightColor.value,
       'primaryFont': primaryFont,
       'secondaryFont': secondaryFont,
       'borderWidth': borderWidth,
@@ -258,18 +262,20 @@ class DisplayTheme {
   }
 
   factory DisplayTheme.fromMap(Map<String, dynamic> map) {
+    final defaultT = DisplayTheme.defaultTheme();
     return DisplayTheme(
       id: map['id'] ?? 1,
-      scaffoldBackgroundColor: Color(map['scaffoldBackgroundColor']),
-      minyanimColumnColor: Color(map['minyanimColumnColor']),
-      zmanimColumnColor: Color(map['zmanimColumnColor']),
-      messagePanelColor: Color(map['messagePanelColor']),
-      primaryTextColor: Color(map['primaryTextColor']),
-      accentColor: Color(map['accentColor']),
-      borderColor: Color(map['borderColor']),
-      primaryFont: map['primaryFont'],
-      secondaryFont: map['secondaryFont'],
-      borderWidth: map['borderWidth'],
+      scaffoldBackgroundColor: Color(map['scaffoldBackgroundColor'] ?? defaultT.scaffoldBackgroundColor.value),
+      minyanimColumnColor: Color(map['minyanimColumnColor'] ?? defaultT.minyanimColumnColor.value),
+      zmanimColumnColor: Color(map['zmanimColumnColor'] ?? defaultT.zmanimColumnColor.value),
+      messagePanelColor: Color(map['messagePanelColor'] ?? defaultT.messagePanelColor.value),
+      primaryTextColor: Color(map['primaryTextColor'] ?? defaultT.primaryTextColor.value),
+      accentColor: Color(map['accentColor'] ?? defaultT.accentColor.value),
+      borderColor: Color(map['borderColor'] ?? defaultT.borderColor.value),
+      highlightColor: Color(map['highlightColor'] ?? defaultT.highlightColor.value),
+      primaryFont: map['primaryFont'] ?? defaultT.primaryFont,
+      secondaryFont: map['secondaryFont'] ?? defaultT.secondaryFont,
+      borderWidth: map['borderWidth'] ?? defaultT.borderWidth,
     );
   }
 }

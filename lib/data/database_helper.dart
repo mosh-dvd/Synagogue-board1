@@ -1,7 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'models.dart';
-import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   DatabaseHelper();
@@ -13,7 +12,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: false,
@@ -71,6 +70,7 @@ class DatabaseHelper {
         primaryTextColor INTEGER,
         accentColor INTEGER,
         borderColor INTEGER,
+        highlightColor INTEGER,
         primaryFont TEXT,
         secondaryFont TEXT,
         borderWidth REAL
@@ -79,36 +79,18 @@ class DatabaseHelper {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) { await db.execute('ALTER TABLE rooms ADD COLUMN show_zmanim INTEGER NOT NULL DEFAULT 0'); }
-    if (oldVersion < 5) { await db.execute('ALTER TABLE rooms ADD COLUMN side_panel_flex INTEGER NOT NULL DEFAULT 1'); }
-    if (oldVersion < 6) { await db.execute("ALTER TABLE minyanim ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'REGULAR'"); }
-    if (oldVersion < 7) { await db.execute("ALTER TABLE rooms ADD COLUMN active_message_panels INTEGER NOT NULL DEFAULT 1"); }
-    if (oldVersion < 8) { await db.execute("ALTER TABLE messages ADD COLUMN panel_index INTEGER NOT NULL DEFAULT 1"); }
-    
-    if (oldVersion < 9) {
-      // Logic for upgrading from versions before 9 if necessary
-    }
-
-    if (oldVersion < 10) {
-      // Logic for upgrading from versions before 10 if necessary
-    }
-
     if (oldVersion < 11) {
       await db.execute('ALTER TABLE rooms ADD COLUMN is_display_active INTEGER NOT NULL DEFAULT 1');
     }
-    
     if (oldVersion < 12) {
       await db.execute('ALTER TABLE rooms ADD COLUMN show_weekday_minyanim_on_shabbat INTEGER NOT NULL DEFAULT 0'); 
     }
-    
     if (oldVersion < 13) {
       await db.execute('ALTER TABLE rooms ADD COLUMN clock_position TEXT NOT NULL DEFAULT \'header\'');
     }
-
     if (oldVersion < 14) {
       await db.execute('ALTER TABLE rooms ADD COLUMN show_borders INTEGER NOT NULL DEFAULT 0');
     }
-
     if (oldVersion < 15) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS theme (
@@ -125,6 +107,9 @@ class DatabaseHelper {
           borderWidth REAL
         )
       ''');
+    }
+    if (oldVersion < 16) {
+      await db.execute('ALTER TABLE theme ADD COLUMN highlightColor INTEGER');
     }
   }
 

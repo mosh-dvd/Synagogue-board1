@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,15 +16,13 @@ class ThemeSettingsDialog extends StatefulWidget {
 class _ThemeSettingsDialogState extends State<ThemeSettingsDialog> {
   late DisplayTheme _currentTheme;
   
-  // רשימת גופנים מומלצים התומכים בעברית
   final List<String> _fontFamilies = [
     'Rubik', 'Heebo', 'Arimo', 'Tinos', 'Frank Ruhl Libre', 'Suez One'
   ];
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // טעינת העיצוב הנוכחי מה-Provider
+  void initState() {
+    super.initState();
     _currentTheme = Provider.of<DataProvider>(context, listen: false).theme;
   }
   
@@ -99,12 +98,13 @@ class _ThemeSettingsDialogState extends State<ThemeSettingsDialog> {
           children: [
             const Text('צבעים', style: TextStyle(fontWeight: FontWeight.bold)),
             _buildColorPicker('רקע כללי', _currentTheme.scaffoldBackgroundColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'scaffoldBackgroundColor': c.value})),
-            _buildColorPicker('רקע עמודות (מניינים, זמנים)', _currentTheme.minyanimColumnColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'minyanimColumnColor': c.value, 'zmanimColumnColor': c.value})),
+            _buildColorPicker('רקע עמודות', _currentTheme.minyanimColumnColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'minyanimColumnColor': c.value, 'zmanimColumnColor': c.value})),
             _buildColorPicker('רקע הודעות', _currentTheme.messagePanelColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'messagePanelColor': c.value})),
             _buildColorPicker('טקסט ראשי', _currentTheme.primaryTextColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'primaryTextColor': c.value})),
             _buildColorPicker('צבע הדגשה (שעות)', _currentTheme.accentColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'accentColor': c.value})),
+            _buildColorPicker('צבע הדגשה מיוחד (זהב)', _currentTheme.highlightColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'highlightColor': c.value})),
             _buildColorPicker('צבע מסגרות', _currentTheme.borderColor, (c) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'borderColor': c.value})),
-
+            
             const Divider(height: 30),
             const Text('גופנים', style: TextStyle(fontWeight: FontWeight.bold)),
             _buildFontPicker('גופן ראשי (כותרות)', _currentTheme.primaryFont, (f) => setState(() => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'primaryFont': f!}))),
