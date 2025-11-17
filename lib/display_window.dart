@@ -18,6 +18,7 @@ import 'package:synagogue_display/widgets/hebcal_widget.dart';
 import 'package:synagogue_display/widgets/message_carousel_widget.dart';
 import 'package:synagogue_display/widgets/zmanim_widget.dart';
 import 'package:synagogue_display/widgets/large_clock_widget.dart';
+import 'package:synagogue_display/widgets/gradient_text.dart';
 
 class DisplayWindow extends StatefulWidget {
   final int windowId;
@@ -94,7 +95,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final links = Map<String, dynamic>.from(data['message_links']);
     final location = data['location'] as String;
     final theme = DisplayTheme.fromMap(data['theme']);
-
     final now = DateTime.now();
 
     final roomData = allRooms.firstWhere(
@@ -294,21 +294,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     if (hasSidebar)
                       Expanded(
                         flex: 1,
-                        child: Column(
-                          children: [
-                            if (zmanimWidget != null)
-                               Expanded(
-                                  flex: 1,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 16.0),
-                                    child: AspectRatio(
-                                      aspectRatio: 1 / 1.5,
-                                      child: zmanimWidget,
-                                    ),
-                                  ),
-                                ),
-                          ],
-                        ),
+                        child: zmanimWidget!,
                       )
                     else 
                       const SizedBox.shrink(),
@@ -448,64 +434,81 @@ class _DisplayWindowState extends State<DisplayWindow> {
     );
   }
 
+  // --- זוהי הפונקציה עם השינויים הלוגיים שרצית לשמור ---
   Widget _buildMessageLayout() {
     final bool isClockInMainPanel = _roomSettings!.showClock && _roomSettings!.clockPosition == ClockPosition.mainPanel;
+    const double spacing = 12.0;
 
+    // יוצר את הווידג'טים של חלוניות ההודעות
+    Widget messagePanelsWidget;
+    
     final panels = [
-      isClockInMainPanel ? LargeClockWidget(roomSettings: _roomSettings!) : _buildMessagePanel(_panelMessages[1] ?? []),
+      _buildMessagePanel(_panelMessages[1] ?? []),
       _buildMessagePanel(_panelMessages[2] ?? []),
       if (_roomSettings!.activeMessagePanels >= 3) _buildMessagePanel(_panelMessages[3] ?? []),
       if (_roomSettings!.activeMessagePanels == 4) _buildMessagePanel(_panelMessages[4] ?? []),
     ];
-    
-    const double spacing = 12.0; 
-    
-    if (_roomSettings!.activeMessagePanels == 1) {
-       return panels[0];
-    }
-    
-    List<Widget> messageWidgets = [];
 
-    if (_roomSettings!.activeMessagePanels >= 2) {
-        messageWidgets.add(
-            Expanded(
-                child: Row(
-                    children: [
-                        Expanded(child: panels[1]),
-                        const SizedBox(width: spacing), 
-                        Expanded(child: panels[0]),
-                    ],
-                ),
+    if (_roomSettings!.activeMessagePanels == 1) {
+      messagePanelsWidget = panels[0];
+    } else {
+      List<Widget> messageRows = [];
+      if (_roomSettings!.activeMessagePanels >= 2) {
+        messageRows.add(
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: panels[1]),
+                const SizedBox(width: spacing),
+                Expanded(child: panels[0]),
+              ],
             ),
+          ),
         );
-        if (_roomSettings!.activeMessagePanels >= 3) {
-            messageWidgets.add(const SizedBox(height: spacing));
-        }
+      }
+      if (_roomSettings!.activeMessagePanels >= 3) {
+        messageRows.add(const SizedBox(height: spacing));
+      }
+      if (_roomSettings!.activeMessagePanels == 3) {
+        messageRows.add(Expanded(child: panels[2]));
+      } else if (_roomSettings!.activeMessagePanels == 4) {
+        messageRows.add(
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: panels[3]),
+                const SizedBox(width: spacing),
+                Expanded(child: panels[2]),
+              ],
+            ),
+          ),
+        );
+      }
+      messagePanelsWidget = Column(children: messageRows);
     }
     
-    if (_roomSettings!.activeMessagePanels == 3) {
-       messageWidgets.add(
-            Expanded(
-                child: panels[2],
-            ),
-       );
-    } else if (_roomSettings!.activeMessagePanels == 4) {
-       messageWidgets.add(
-            Expanded(
-                child: Row(
-                     children: [
-                        Expanded(child: panels[3]),
-                        const SizedBox(width: spacing),
-                        Expanded(child: panels[2]),
-                     ],
-                ),
-            ),
-       );
+    // התנאי הראשי: אם צריך להציג את השעון הגדול
+    if (isClockInMainPanel) {
+      return Column(
+        children: [
+          // חלק השעון (תופס כשליש מהמקום)
+          Expanded(
+            flex: 1,
+            child: LargeClockWidget(roomSettings: _roomSettings!),
+          ),
+          const SizedBox(height: spacing),
+          // חלק ההודעות (תופס כשני שליש מהמקום)
+          Expanded(
+            flex: 2,
+            child: messagePanelsWidget,
+          ),
+        ],
+      );
+    } 
+    // אם לא צריך להציג את השעון הגדול
+    else {
+      return messagePanelsWidget;
     }
-    
-    return Column(
-        children: messageWidgets,
-    );
   }
 
   Widget _buildHeaderTitle() {
@@ -523,9 +526,18 @@ class _DisplayWindowState extends State<DisplayWindow> {
               else
                 const SizedBox(width: 80),
                 
-              Text(
+              GradientText(
                 widget.title,
-                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 36, fontWeight: FontWeight.bold, color: theme.highlightColor),
+                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 36, fontWeight: FontWeight.bold),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFFF7EF8A),
+                    Color(0xFFD4AF37),
+                    Color(0xFFB58D3F),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
               
               if (_roomSettings!.showCalendar) 
