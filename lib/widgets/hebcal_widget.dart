@@ -1,8 +1,8 @@
-// lib/widgets/hebcal_widget.dart (קובץ מלא)
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:provider/provider.dart';
-import 'package:synagogue_display/data/data_provider.dart'; // *** שינוי: ייבוא DataProvider ***
+import 'package:synagogue_display/data/data_provider.dart';
 
 
 class HebcalWidget extends StatelessWidget {
@@ -79,7 +79,6 @@ class HebcalWidget extends StatelessWidget {
   }
 
   String getFormattedHebrewDate(BuildContext context) {
-    // *** שינוי: קריאת תאריך ההדמיה מה-Provider ***
     final dataProvider = Provider.of<DataProvider>(context);
     final simulationDate = dataProvider.simulationDate;
     
@@ -94,9 +93,14 @@ class HebcalWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Provider.of<DataProvider>(context).theme;
     return Text(
       getFormattedHebrewDate(context),
-      style: const TextStyle(color: Colors.black87, fontSize: 24),
+      style: GoogleFonts.getFont(
+        theme.primaryFont,
+        color: theme.primaryTextColor, 
+        fontSize: 24
+      ),
     );
   }
 }

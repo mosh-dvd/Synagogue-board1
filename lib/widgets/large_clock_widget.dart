@@ -5,15 +5,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
+import 'package:synagogue_display/data/models.dart';
 
-class ClockWidget extends StatefulWidget {
-  const ClockWidget({Key? key}) : super(key: key);
+class LargeClockWidget extends StatefulWidget {
+  final Room roomSettings;
+  const LargeClockWidget({Key? key, required this.roomSettings}) : super(key: key);
 
   @override
-  _ClockWidgetState createState() => _ClockWidgetState();
+  _LargeClockWidgetState createState() => _LargeClockWidgetState();
 }
 
-class _ClockWidgetState extends State<ClockWidget> {
+class _LargeClockWidgetState extends State<LargeClockWidget> {
   String _timeString = "";
   Timer? _timer;
 
@@ -33,7 +35,7 @@ class _ClockWidgetState extends State<ClockWidget> {
   void _getTime() {
     final DateTime now = DateTime.now();
     final String formattedDateTime = _formatDateTime(now);
-    if(mounted){
+    if (mounted) {
       setState(() {
         _timeString = formattedDateTime;
       });
@@ -47,15 +49,30 @@ class _ClockWidgetState extends State<ClockWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Provider.of<DataProvider>(context, listen: false).theme;
-    return Text(
-      _timeString,
-      style: GoogleFonts.getFont(
-        theme.secondaryFont,
-        color: theme.primaryTextColor, 
-        fontSize: 24, 
-        fontWeight: FontWeight.w500
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.minyanimColumnColor,
+        borderRadius: BorderRadius.circular(11),
+        border: widget.roomSettings.showBorders
+            ? Border.all(
+                color: theme.borderColor,
+                width: theme.borderWidth,
+              )
+            : null,
       ),
-      textDirection: ui.TextDirection.ltr, // <--- שימוש בייבוא הישיר
+      child: Center(
+        child: Text(
+          _timeString,
+          style: GoogleFonts.getFont(
+            theme.secondaryFont,
+            fontSize: 120,
+            fontWeight: FontWeight.bold,
+            color: theme.primaryTextColor,
+          ),
+          textDirection: ui.TextDirection.ltr, // <--- שימוש בייבוא הישיר
+        ),
+      ),
     );
   }
 }

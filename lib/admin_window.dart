@@ -8,6 +8,7 @@ import 'package:synagogue_display/tabs/minyanim_management_tab.dart';
 import 'package:synagogue_display/tabs/rooms_management_tab.dart';
 import 'package:synagogue_display/tabs/messages_management_tab.dart';
 import 'package:synagogue_display/dialogs/global_settings_dialog.dart';
+import 'package:synagogue_display/dialogs/theme_settings_dialog.dart';
 
 class AdminWindow extends StatefulWidget {
   const AdminWindow({Key? key}) : super(key: key);
@@ -53,6 +54,7 @@ class _AdminWindowState extends State<AdminWindow> {
         'messages': dataProvider.messages.map((m) => m.toMap()).toList(),
         'message_links': dataProvider.messageLinks,
         'location': dataProvider.location,
+        'theme': dataProvider.theme.toMap(),
       });
       
       final windowIds = await DesktopMultiWindow.getAllSubWindowIds();
@@ -72,7 +74,7 @@ class _AdminWindowState extends State<AdminWindow> {
     await dataProvider.fetchAllData();
 
     for (final room in dataProvider.rooms) {
-      if (room.isDisplayActive) { // בדיקה האם החדר פעיל
+      if (room.isDisplayActive) {
         final arguments = jsonEncode({
           'title': room.name,
           'room_id': room.id,
@@ -95,6 +97,13 @@ class _AdminWindowState extends State<AdminWindow> {
       Provider.of<DataProvider>(context, listen: false).fetchAllData();
     });
   }
+  
+  void _showThemeSettings(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ThemeSettingsDialog(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +115,11 @@ class _AdminWindowState extends State<AdminWindow> {
           appBar: AppBar(
             title: const Text('ממשק ניהול'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.color_lens_outlined),
+                tooltip: 'הגדרות עיצוב',
+                onPressed: () => _showThemeSettings(context),
+              ),
               IconButton(
                 icon: const Icon(Icons.settings),
                 tooltip: 'הגדרות כלליות',

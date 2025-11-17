@@ -1,4 +1,3 @@
-// lib/dialogs/room_settings_dialog.dart (קובץ מלא)
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/models.dart';
 import 'package:synagogue_display/data/database_helper.dart';
@@ -17,7 +16,9 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
   late bool _showZmanim;
   late MinyanDisplayMode _displayMode;
   late int _activeMessagePanels;
-  late bool _showWeekdayMinyanimOnShabbat; // *** משתנה חדש ***
+  late bool _showWeekdayMinyanimOnShabbat;
+  late ClockPosition _clockPosition;
+  late bool _showBorders; // --- הוספה: משתנה חדש ---
 
   @override
   void initState() {
@@ -27,7 +28,9 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
     _showZmanim = widget.room.showZmanim;
     _displayMode = widget.room.displayMode;
     _activeMessagePanels = widget.room.activeMessagePanels;
-    _showWeekdayMinyanimOnShabbat = widget.room.showWeekdayMinyanimOnShabbat; // *** אתחול משתנה חדש ***
+    _showWeekdayMinyanimOnShabbat = widget.room.showWeekdayMinyanimOnShabbat;
+    _clockPosition = widget.room.clockPosition;
+    _showBorders = widget.room.showBorders; // --- הוספה: אתחול ---
   }
 
   Future<void> _saveSettings() async {
@@ -40,7 +43,9 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
       displayMode: _displayMode,
       activeMessagePanels: _activeMessagePanels,
       isDisplayActive: widget.room.isDisplayActive,
-      showWeekdayMinyanimOnShabbat: _showWeekdayMinyanimOnShabbat, // *** שמירת הערך החדש ***
+      showWeekdayMinyanimOnShabbat: _showWeekdayMinyanimOnShabbat,
+      clockPosition: _clockPosition,
+      showBorders: _showBorders, // --- הוספה: שמירת הערך החדש ---
     );
     await DatabaseHelper().updateRoom(updatedRoom);
     Navigator.of(context).pop();
@@ -75,17 +80,15 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
               },
             ),
             
-            // *** הוספת הגדרת תצוגת יום חול בשבת ***
             SwitchListTile(
               title: const Text('הצג מנייני יום חול גם בשבת/חג'),
               subtitle: const Text('מציג את מנייני יום חול (בנוסף למנייני שבת/חג)'),
               value: _showWeekdayMinyanimOnShabbat,
               onChanged: (bool value) => setState(() => _showWeekdayMinyanimOnShabbat = value),
             ),
-            // *** סוף הוספת הגדרת תצוגת יום חול בשבת ***
             
             const Divider(height: 30),
-            const Text('פריסת הודעות', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('פריסת תצוגה', style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButtonFormField<int>(
               value: _activeMessagePanels,
               items: const [
@@ -99,8 +102,15 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
                   setState(() => _activeMessagePanels = newValue);
                 }
               },
-              decoration: const InputDecoration(labelText: 'מספר חלוניות פעילות'),
+              decoration: const InputDecoration(labelText: 'מספר חלוניות הודעות'),
             ),
+             // --- הוספה: מתג להצגת מסגרות ---
+            SwitchListTile(
+              title: const Text('הצג מסגרות דקורטיביות'),
+              value: _showBorders,
+              onChanged: (bool value) => setState(() => _showBorders = value),
+            ),
+
             const Divider(height: 30),
             const Text('ווידג\'טים נוספים', style: TextStyle(fontWeight: FontWeight.bold)),
             SwitchListTile(
@@ -108,6 +118,31 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
               value: _showClock,
               onChanged: (bool value) => setState(() => _showClock = value),
             ),
+
+            if (_showClock)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: DropdownButtonFormField<ClockPosition>(
+                  value: _clockPosition,
+                  items: const [
+                    DropdownMenuItem(
+                      value: ClockPosition.header,
+                      child: Text('בכותרת (קטן)'),
+                    ),
+                    DropdownMenuItem(
+                      value: ClockPosition.mainPanel,
+                      child: Text('במקום הודעה (גדול)'),
+                    ),
+                  ],
+                  onChanged: (ClockPosition? newValue) {
+                    if (newValue != null) {
+                      setState(() => _clockPosition = newValue);
+                    }
+                  },
+                  decoration: const InputDecoration(labelText: 'מיקום השעון'),
+                ),
+              ),
+
             SwitchListTile(
               title: const Text('הצג תאריך עברי'),
               value: _showCalendar,

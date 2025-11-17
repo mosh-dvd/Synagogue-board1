@@ -1,5 +1,3 @@
-// lib/data/data_provider.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:synagogue_display/data/database_helper.dart';
 import 'package:synagogue_display/data/models.dart';
@@ -12,6 +10,7 @@ class DataProvider with ChangeNotifier {
   List<Message> _messages = [];
   Map<String, List<dynamic>> _messageLinks = {};
   String _location = 'ירושלים';
+  DisplayTheme _theme = DisplayTheme.defaultTheme();
   
   DateTime? _simulationDate;
 
@@ -20,6 +19,7 @@ class DataProvider with ChangeNotifier {
   List<Message> get messages => _messages;
   Map<String, List<dynamic>> get messageLinks => _messageLinks;
   String get location => _location;
+  DisplayTheme get theme => _theme;
 
   DateTime get simulationDate {
     if (_simulationDate == null) {
@@ -40,6 +40,7 @@ class DataProvider with ChangeNotifier {
     _messages = await _dbHelper.getMessages();
     _messageLinks = await _dbHelper.getAllMessageLinks();
     _location = await _dbHelper.getSetting('location') ?? 'ירושלים';
+    _theme = await _dbHelper.getTheme();
     
     final simDateStr = await _dbHelper.getSetting('simulation_date');
     if (simDateStr != null) {
@@ -51,6 +52,11 @@ class DataProvider with ChangeNotifier {
     notifyListeners();
   }
   
+  Future<void> updateTheme(DisplayTheme newTheme) async {
+    await _dbHelper.updateTheme(newTheme);
+    await fetchAllData();
+  }
+
   Future<void> setSimulationDate(DateTime? date) async {
     _simulationDate = date;
     if (date == null) {

@@ -1,5 +1,10 @@
-// lib/data/models.dart (קובץ מלא)
+import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
+
+enum ClockPosition {
+  header,
+  mainPanel
+}
 
 enum MinyanDisplayMode {
   THIS_ROOM_ONLY,
@@ -15,7 +20,9 @@ class Room {
   final MinyanDisplayMode displayMode;
   final int activeMessagePanels;
   final bool isDisplayActive;
-  final bool showWeekdayMinyanimOnShabbat; 
+  final bool showWeekdayMinyanimOnShabbat;
+  final ClockPosition clockPosition;
+  final bool showBorders;
 
   Room({
     this.id,
@@ -26,7 +33,9 @@ class Room {
     this.displayMode = MinyanDisplayMode.THIS_ROOM_ONLY,
     this.activeMessagePanels = 1,
     this.isDisplayActive = true,
-    this.showWeekdayMinyanimOnShabbat = false, 
+    this.showWeekdayMinyanimOnShabbat = false,
+    this.clockPosition = ClockPosition.header,
+    this.showBorders = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -39,7 +48,9 @@ class Room {
       'display_mode': displayMode.name,
       'active_message_panels': activeMessagePanels,
       'is_display_active': isDisplayActive ? 1 : 0,
-      'show_weekday_minyanim_on_shabbat': showWeekdayMinyanimOnShabbat ? 1 : 0, 
+      'show_weekday_minyanim_on_shabbat': showWeekdayMinyanimOnShabbat ? 1 : 0,
+      'clock_position': clockPosition.name,
+      'show_borders': showBorders ? 1 : 0,
     };
   }
 
@@ -56,7 +67,12 @@ class Room {
       ),
       activeMessagePanels: map['active_message_panels'] ?? 1,
       isDisplayActive: map['is_display_active'] == null ? true : map['is_display_active'] == 1,
-      showWeekdayMinyanimOnShabbat: map['show_weekday_minyanim_on_shabbat'] == null ? false : map['show_weekday_minyanim_on_shabbat'] == 1, 
+      showWeekdayMinyanimOnShabbat: map['show_weekday_minyanim_on_shabbat'] == null ? false : map['show_weekday_minyanim_on_shabbat'] == 1,
+      clockPosition: ClockPosition.values.firstWhere(
+        (e) => e.name == map['clock_position'],
+        orElse: () => ClockPosition.header,
+      ),
+      showBorders: map['show_borders'] == null ? false : map['show_borders'] == 1,
     );
   }
 }
@@ -179,6 +195,81 @@ class Message {
       displayOrder: map['display_order'],
       isActive: map['is_active'] == 1,
       panelIndex: map['panel_index'] ?? 1,
+    );
+  }
+}
+
+class DisplayTheme {
+  final int id;
+  final Color scaffoldBackgroundColor;
+  final Color minyanimColumnColor;
+  final Color zmanimColumnColor;
+  final Color messagePanelColor;
+  final Color primaryTextColor;
+  final Color accentColor;
+  final Color borderColor;
+  final String primaryFont;
+  final String secondaryFont;
+  final double borderWidth;
+
+  DisplayTheme({
+    this.id = 1,
+    required this.scaffoldBackgroundColor,
+    required this.minyanimColumnColor,
+    required this.zmanimColumnColor,
+    required this.messagePanelColor,
+    required this.primaryTextColor,
+    required this.accentColor,
+    required this.borderColor,
+    required this.primaryFont,
+    required this.secondaryFont,
+    required this.borderWidth,
+  });
+
+  factory DisplayTheme.defaultTheme() {
+    return DisplayTheme(
+      scaffoldBackgroundColor: const Color(0xFFE3F2FD),
+      minyanimColumnColor: const Color(0xFFB3E5FC),
+      zmanimColumnColor: const Color(0xFFB3E5FC),
+      messagePanelColor: const Color(0xFFFFF7F7),
+      primaryTextColor: const Color(0xFF37474F),
+      accentColor: const Color(0xFF0D47A1),
+      borderColor: const Color(0xFF37474F).withOpacity(0.4),
+      primaryFont: 'Rubik',
+      secondaryFont: 'Tinos',
+      borderWidth: 3.0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'scaffoldBackgroundColor': scaffoldBackgroundColor.value,
+      'minyanimColumnColor': minyanimColumnColor.value,
+      'zmanimColumnColor': zmanimColumnColor.value,
+      'messagePanelColor': messagePanelColor.value,
+      'primaryTextColor': primaryTextColor.value,
+      'accentColor': accentColor.value,
+      'borderColor': borderColor.value,
+      'primaryFont': primaryFont,
+      'secondaryFont': secondaryFont,
+      'borderWidth': borderWidth,
+    };
+  }
+
+  factory DisplayTheme.fromMap(Map<String, dynamic> map) {
+    return DisplayTheme(
+      id: map['id'] ?? 1,
+      scaffoldBackgroundColor: Color(map['scaffoldBackgroundColor']),
+      minyanimColumnColor: Color(map['minyanimColumnColor']),
+      zmanimColumnColor: Color(map['zmanimColumnColor']),
+      messagePanelColor: Color(map['messagePanelColor']),
+      primaryTextColor: Color(map['primaryTextColor']),
+      accentColor: Color(map['accentColor']),
+      borderColor: Color(map['borderColor']),
+      primaryFont: map['primaryFont'],
+      secondaryFont: map['secondaryFont'],
+      borderWidth: map['borderWidth'],
     );
   }
 }
