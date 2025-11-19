@@ -24,13 +24,13 @@ class ZmanimWidget extends StatelessWidget {
     final dailyTimes = ZmanimHelper.calculateDailyTimes(location, date: simulationDate);
     final timesList = dailyTimes.entries.toList();
 
-    // שימוש בצבעים בהירים עבור העיצוב המודרני (Dark Mode)
-    final Color textColor = Colors.white;
-    final Color accentColor = Colors.amberAccent;
+    // חיבור לצבעים מההגדרות
+    final Color textColor = theme.primaryTextColor;
+    final Color accentColor = theme.accentColor;
 
     return Container(
       padding: const EdgeInsets.all(12.0),
-      // ביטלנו את הרקע האטום כדי שיראו את ה-GlassContainer
+      // משאירים שקוף כדי שה-GlassContainer מסביב יעבוד
       decoration: const BoxDecoration(
         color: Colors.transparent, 
       ),
@@ -43,12 +43,12 @@ class ZmanimWidget extends StatelessWidget {
               style: GoogleFonts.getFont(
                 theme.primaryFont,
                 fontSize: 28,
-                fontWeight: FontWeight.w300, // פונט דק יותר למראה מודרני
+                fontWeight: FontWeight.w500, // החזרתי למשקל רגיל כדי שיראה טוב בכל גופן
                 color: textColor,
               ),
             ),
           ),
-          Divider(thickness: 1, color: Colors.white.withOpacity(0.3)),
+          Divider(thickness: 1, color: textColor.withOpacity(0.3)),
           Expanded(
             child: AutoScrollingListView(
               padding: const EdgeInsets.symmetric(vertical: 8),

@@ -263,6 +263,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
 
     final theme = _theme!;
+    
+    // כדי שהעיצוב יהיה מודרני, מומלץ שבהגדרות תבחר רקע כהה.
+    // אבל כעת, הקוד יכבד כל צבע שתבחר.
+    final backgroundColor = theme.scaffoldBackgroundColor;
 
     final minyanimColumn = _buildMinyanimColumn();
     final zmanimWidget = _roomSettings!.showZmanim && _location != null
@@ -273,36 +277,32 @@ class _DisplayWindowState extends State<DisplayWindow> {
     return Directionality(
       textDirection: ui.TextDirection.rtl,
       child: Scaffold(
-        // מבטל רקע רגיל לטובת הגרדיאנט המודרני
-        backgroundColor: Colors.transparent, 
+        // חיבור צבע הרקע להגדרות
+        backgroundColor: backgroundColor, 
         body: Stack(
           children: [
-            // 1. רקע גרדיאנט מודרני
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF1A237E), // כחול כהה עמוק
-                    Color(0xFF000000), // שחור
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
+            // כאן מחקתי את הגרדיאנט הקשיח.
+            // אם תרצה גרדיאנט בעתיד, נצטרך להוסיף אפשרות בחירת צבע שני בהגדרות.
+            // כרגע זה צבע אחיד לפי בחירתך.
+            
             // 2. תוכן
             Column(
               children: [
                 _buildHeaderTitle(),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0), // ריווח גדול יותר
+                    padding: const EdgeInsets.all(24.0),
                     child: Row(
                       children: [
                         Expanded(
                           flex: 1,
-                          // שימוש ב-GlassContainer
-                          child: GlassContainer(child: minyanimColumn),
+                          // מעבירים את צבע העמודה ל-GlassContainer
+                          child: GlassContainer(
+                            color: theme.minyanimColumnColor, // הצבע שבחרת לעמודות
+                            borderColor: theme.borderColor,
+                            opacity: 0.2, // שקיפות קבועה, אבל הצבע שלך
+                            child: minyanimColumn
+                          ),
                         ),
                         const SizedBox(width: 24),
                         Expanded(
@@ -313,7 +313,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
                         if (hasSidebar)
                           Expanded(
                             flex: 1,
-                            child: GlassContainer(child: zmanimWidget!),
+                            child: GlassContainer(
+                              color: theme.zmanimColumnColor,
+                              borderColor: theme.borderColor,
+                              opacity: 0.2,
+                              child: zmanimWidget!
+                            ),
                           )
                         else 
                           const SizedBox.shrink(),
@@ -321,15 +326,20 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     ),
                   ),
                 ),
-                // הסטריפ התחתון - כהה וחצי שקוף
+                // הסטריפ התחתון
                 Container(
                   width: double.infinity,
-                  color: Colors.black.withOpacity(0.4),
+                  // משתמשים בצבע הפאנל להודעות עבור הסטריפ התחתון, או צבע נגדי
+                  color: theme.primaryTextColor.withOpacity(0.1),
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  // --- כאן תוקנה השגיאה: הוסרה המילה const לפני Center ---
                   child: Center(
+                    // מעבירים Theme שמבוסס על בחירות המשתמש כדי ש-HebcalWidget יקלוט את הצבעים
                     child: Theme(
-                      data: ThemeData(brightness: Brightness.dark),
+                      data: ThemeData(
+                        textTheme: TextTheme(
+                          bodyMedium: TextStyle(color: theme.primaryTextColor),
+                        ),
+                      ),
                       child: const HebcalWidget(),
                     ),
                   ),
@@ -346,9 +356,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
     List<Widget> minyanWidgets = [];
     final theme = _theme!;
     
-    final Color titleColor = Colors.white;
-    final Color subTitleColor = Colors.white70;
-    final Color timeColor = const Color(0xFFFFD700); // זהב
+    // חיבור לצבעים מההגדרות
+    final Color titleColor = theme.primaryTextColor;
+    final Color subTitleColor = theme.primaryTextColor.withOpacity(0.8);
+    final Color timeColor = theme.accentColor; 
 
     final now = DateTime.now();
     final jewishCalendar = JewishCalendar.fromDateTime(now);
@@ -374,8 +385,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
             title = _getScheduleTypeTitle(type);
         }
         
-        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 28, fontWeight: FontWeight.w300, color: titleColor), textAlign: TextAlign.center, ), ), );
-        minyanWidgets.add(const Divider(color: Colors.white24, indent: 40, endIndent: 40, thickness: 1));
+        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 28, fontWeight: FontWeight.w500, color: titleColor), textAlign: TextAlign.center, ), ), );
+        minyanWidgets.add(Divider(color: titleColor.withOpacity(0.3), indent: 40, endIndent: 40, thickness: 1));
         
         final prayerGroups = _groupedMinyanim[type]!.entries.toList();
 
@@ -397,7 +408,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
           minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, fontWeight: FontWeight.w500, color: subTitleColor), textAlign: TextAlign.center, ), ), );
           for (var minyan in minyanList) {
-            minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 20, color: Colors.white60), textAlign: TextAlign.right, ), Text( minyan.time ?? '--:--', style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 32, fontWeight: FontWeight.bold, color: timeColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ], ), ), );
+            minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 20, color: subTitleColor.withOpacity(0.7)), textAlign: TextAlign.right, ), Text( minyan.time ?? '--:--', style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 32, fontWeight: FontWeight.bold, color: timeColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ], ), ), );
           }
           
           if (i < prayerGroups.length - 1) {
@@ -408,7 +419,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
     
     return _groupedMinyanim.isEmpty 
-      ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white54))) 
+      ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: subTitleColor))) 
       : AutoScrollingListView(
           padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
           children: minyanWidgets,
@@ -418,8 +429,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
   Widget _buildMessagePanel(List<Message> messages) {
     final theme = _theme!;
     return GlassContainer(
+      color: theme.messagePanelColor, // חיבור לצבע פאנל הודעות
+      borderColor: theme.borderColor,
+      opacity: 0.5, // הודעות צריכות להיות קצת יותר אטומות לקריאות
       child: messages.isEmpty
-          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 18, color: Colors.white54)))
+          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 18, color: theme.primaryTextColor.withOpacity(0.5))))
           : MessageCarouselWidget(messages: messages),
     );
   }
@@ -481,6 +495,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
           Expanded(
             flex: 1,
             child: GlassContainer(
+              color: _theme!.minyanimColumnColor,
+              borderColor: _theme!.borderColor,
+              opacity: 0.2,
               child: Center(
                 child: LargeClockWidget(roomSettings: _roomSettings!),
               ),
@@ -510,18 +527,25 @@ class _DisplayWindowState extends State<DisplayWindow> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (_roomSettings!.showClock && _roomSettings!.clockPosition == ClockPosition.header) 
-                 Theme(data: ThemeData(brightness: Brightness.dark), child: const ClockWidget())
+                 // וודא שהשעון מקבל את ה-Theme הנכון
+                 Theme(
+                    data: ThemeData(
+                      textTheme: TextTheme(
+                        bodyMedium: TextStyle(color: theme.primaryTextColor)
+                      )
+                    ), 
+                    child: const ClockWidget()
+                 )
               else
                 const SizedBox(width: 80),
                 
               GradientText(
                 widget.title,
                 style: GoogleFonts.getFont(theme.primaryFont, fontSize: 42, fontWeight: FontWeight.w300),
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [
-                    Color(0xFFFFF176), 
-                    Color(0xFFFFD700), 
-                    Color(0xFFFFB300), 
+                    theme.highlightColor, // צבע הדגשה מיוחד מההגדרות (ברירת מחדל זהב)
+                    theme.primaryTextColor, // צבע טקסט רגיל
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -534,7 +558,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
         ),
         
         Container(
-          color: Colors.white.withOpacity(0.05),
+          color: theme.primaryTextColor.withOpacity(0.05),
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
           child: Center(
             child: Row(
@@ -542,7 +566,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
               children: [
                 Text(
                   _nextMinyan == null ? 'אין מניינים קרובים' : 'המניין הבא:', 
-                  style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white70)
+                  style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: theme.primaryTextColor.withOpacity(0.7))
                 ),
                 const SizedBox(width: 12),
                 if (_nextMinyan != null) ...[
@@ -550,11 +574,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     text: TextSpan(
-                      style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white),
+                      style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: theme.primaryTextColor),
                       children: [
                         TextSpan(
                           text: '${_nextMinyan!.minyan.name} ',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFFD700)),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: theme.highlightColor),
                         ),
                         const TextSpan(text: 'בשעה '),
                         TextSpan(
@@ -571,7 +595,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                   const SizedBox(width: 24),
                   Text(
                     'בעוד:',
-                    style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white70),
+                    style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: theme.primaryTextColor.withOpacity(0.7)),
                   ),
                   const SizedBox(width: 8),
                   Text(

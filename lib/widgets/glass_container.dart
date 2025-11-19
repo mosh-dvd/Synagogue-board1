@@ -6,13 +6,17 @@ class GlassContainer extends StatelessWidget {
   final double opacity;
   final double blur;
   final EdgeInsetsGeometry? padding;
+  final Color? color; // הוספנו צבע מותאם אישית
+  final Color? borderColor; // הוספנו צבע מסגרת מותאם אישית
 
   const GlassContainer({
     Key? key,
     required this.child,
-    this.opacity = 0.1,
+    this.opacity = 0.1, // ברירת מחדל אם לא נבחר צבע
     this.blur = 10.0,
     this.padding,
+    this.color,
+    this.borderColor,
   }) : super(key: key);
 
   @override
@@ -24,10 +28,16 @@ class GlassContainer extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(opacity),
+            // משתמשים בצבע שהועבר, ואם לא - בלבן עם שקיפות
+            color: color != null 
+                ? color!.withOpacity(opacity) 
+                : Colors.white.withOpacity(opacity),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              // משתמשים בצבע המסגרת שהועבר
+              color: borderColor != null 
+                  ? borderColor!.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.2),
               width: 1.0,
             ),
             boxShadow: [
