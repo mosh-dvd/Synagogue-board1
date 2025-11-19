@@ -19,6 +19,7 @@ import 'package:synagogue_display/widgets/message_carousel_widget.dart';
 import 'package:synagogue_display/widgets/zmanim_widget.dart';
 import 'package:synagogue_display/widgets/large_clock_widget.dart';
 import 'package:synagogue_display/widgets/gradient_text.dart';
+import 'package:synagogue_display/widgets/glass_container.dart';
 
 class DisplayWindow extends StatefulWidget {
   final int windowId;
@@ -265,51 +266,76 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
     final minyanimColumn = _buildMinyanimColumn();
     final zmanimWidget = _roomSettings!.showZmanim && _location != null
-        ? ZmanimWidget(location: _location!, showBorders: _roomSettings!.showBorders)
+        ? ZmanimWidget(location: _location!, showBorders: false)
         : null;
     final hasSidebar = zmanimWidget != null;
 
     return Directionality(
       textDirection: ui.TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        body: Column(
+        // מבטל רקע רגיל לטובת הגרדיאנט המודרני
+        backgroundColor: Colors.transparent, 
+        body: Stack(
           children: [
-            _buildHeaderTitle(),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: minyanimColumn,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: _buildMessageLayout(),
-                    ),
-                    const SizedBox(width: 16),
-                    if (hasSidebar)
-                      Expanded(
-                        flex: 1,
-                        child: zmanimWidget!,
-                      )
-                    else 
-                      const SizedBox.shrink(),
+            // 1. רקע גרדיאנט מודרני
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF1A237E), // כחול כהה עמוק
+                    Color(0xFF000000), // שחור
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
-            // הוספת התאריך העברי בתחתית המסך
-            if (_roomSettings!.showCalendar)
-              Container(
-                width: double.infinity,
-                color: theme.primaryTextColor.withOpacity(0.05),
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: const Center(child: HebcalWidget()),
-              ),
+            // 2. תוכן
+            Column(
+              children: [
+                _buildHeaderTitle(),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0), // ריווח גדול יותר
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          // שימוש ב-GlassContainer
+                          child: GlassContainer(child: minyanimColumn),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          flex: 2,
+                          child: _buildMessageLayout(),
+                        ),
+                        const SizedBox(width: 24),
+                        if (hasSidebar)
+                          Expanded(
+                            flex: 1,
+                            child: GlassContainer(child: zmanimWidget!),
+                          )
+                        else 
+                          const SizedBox.shrink(),
+                      ],
+                    ),
+                  ),
+                ),
+                // הסטריפ התחתון - כהה וחצי שקוף
+                Container(
+                  width: double.infinity,
+                  color: Colors.black.withOpacity(0.4),
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  // --- כאן תוקנה השגיאה: הוסרה המילה const לפני Center ---
+                  child: Center(
+                    child: Theme(
+                      data: ThemeData(brightness: Brightness.dark),
+                      child: const HebcalWidget(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -320,6 +346,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
     List<Widget> minyanWidgets = [];
     final theme = _theme!;
     
+    final Color titleColor = Colors.white;
+    final Color subTitleColor = Colors.white70;
+    final Color timeColor = const Color(0xFFFFD700); // זהב
+
     final now = DateTime.now();
     final jewishCalendar = JewishCalendar.fromDateTime(now);
     final isShabbatOrChag = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
@@ -344,8 +374,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
             title = _getScheduleTypeTitle(type);
         }
         
-        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 26, fontWeight: FontWeight.w500, color: theme.primaryTextColor), textAlign: TextAlign.center, ), ), );
-        minyanWidgets.add(Divider(color: theme.primaryTextColor.withOpacity(0.1), indent: 30, endIndent: 30, thickness: 1));
+        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 28, fontWeight: FontWeight.w300, color: titleColor), textAlign: TextAlign.center, ), ), );
+        minyanWidgets.add(const Divider(color: Colors.white24, indent: 40, endIndent: 40, thickness: 1));
         
         final prayerGroups = _groupedMinyanim[type]!.entries.toList();
 
@@ -365,86 +395,38 @@ class _DisplayWindowState extends State<DisplayWindow> {
           final prayerName = prayerGroups[i].key;
           final minyanList = prayerGroups[i].value;
 
-          minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, fontWeight: FontWeight.w500, color: theme.primaryTextColor.withOpacity(0.9)), textAlign: TextAlign.center, ), ), );
+          minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, fontWeight: FontWeight.w500, color: subTitleColor), textAlign: TextAlign.center, ), ), );
           for (var minyan in minyanList) {
-            minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 18, color: theme.primaryTextColor.withOpacity(0.7)), textAlign: TextAlign.right, ), Text( minyan.time ?? '--:--', style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 30, fontWeight: FontWeight.bold, color: theme.accentColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ], ), ), );
+            minyanWidgets.add( Padding( padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0), child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 20, color: Colors.white60), textAlign: TextAlign.right, ), Text( minyan.time ?? '--:--', style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 32, fontWeight: FontWeight.bold, color: timeColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), ], ), ), );
           }
           
           if (i < prayerGroups.length - 1) {
-            minyanWidgets.add(
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 60.0),
-                child: Row(
-                  children: [
-                    Expanded(child: Divider(color: theme.primaryTextColor.withOpacity(0.2))),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Icon(Icons.spa_outlined, color: theme.primaryTextColor.withOpacity(0.6), size: 18),
-                    ),
-                    Expanded(child: Divider(color: theme.primaryTextColor.withOpacity(0.2))),
-                  ],
-                ),
-              )
-            );
+            minyanWidgets.add(const SizedBox(height: 16));
           }
         }
       }
     }
-    return Container( 
-      decoration: BoxDecoration( 
-        color: theme.minyanimColumnColor, 
-        borderRadius: BorderRadius.circular(16), 
-        border: _roomSettings!.showBorders
-            ? Border.all(color: theme.borderColor, width: theme.borderWidth)
-            : null,
-      ), 
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 8, right: 8,
-              child: Icon(Icons.spa_outlined, color: theme.primaryTextColor.withOpacity(0.4), size: 24),
-            ),
-            Positioned(
-              top: 8, left: 8,
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.rotationY(pi),
-                child: Icon(Icons.spa_outlined, color: theme.primaryTextColor.withOpacity(0.4), size: 24),
-              ),
-            ),
-            _groupedMinyanim.isEmpty 
-              ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: theme.primaryTextColor.withOpacity(0.6)))) 
-              : AutoScrollingListView(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                  children: minyanWidgets,
-                ),
-          ],
-        ),
-      ), 
-    );
+    
+    return _groupedMinyanim.isEmpty 
+      ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white54))) 
+      : AutoScrollingListView(
+          padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+          children: minyanWidgets,
+        );
   }
 
   Widget _buildMessagePanel(List<Message> messages) {
     final theme = _theme!;
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.messagePanelColor,
-        borderRadius: BorderRadius.circular(11),
-        border: _roomSettings!.showBorders
-            ? Border.all(color: theme.borderColor, width: theme.borderWidth)
-            : null,
-      ),
+    return GlassContainer(
       child: messages.isEmpty
-          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 18, color: Colors.grey[400])))
+          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 18, color: Colors.white54)))
           : MessageCarouselWidget(messages: messages),
     );
   }
 
   Widget _buildMessageLayout() {
     final bool isClockInMainPanel = _roomSettings!.showClock && _roomSettings!.clockPosition == ClockPosition.mainPanel;
-    const double spacing = 12.0;
+    const double spacing = 24.0;
 
     Widget messagePanelsWidget;
     
@@ -498,7 +480,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
         children: [
           Expanded(
             flex: 1,
-            child: LargeClockWidget(roomSettings: _roomSettings!),
+            child: GlassContainer(
+              child: Center(
+                child: LargeClockWidget(roomSettings: _roomSettings!),
+              ),
+            ),
           ),
           const SizedBox(height: spacing),
           Expanded(
@@ -518,37 +504,37 @@ class _DisplayWindowState extends State<DisplayWindow> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (_roomSettings!.showClock && _roomSettings!.clockPosition == ClockPosition.header) 
-                const ClockWidget()
+                 Theme(data: ThemeData(brightness: Brightness.dark), child: const ClockWidget())
               else
                 const SizedBox(width: 80),
                 
               GradientText(
                 widget.title,
-                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 36, fontWeight: FontWeight.bold),
+                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 42, fontWeight: FontWeight.w300),
                 gradient: const LinearGradient(
                   colors: [
-                    Color(0xFFF7EF8A),
-                    Color(0xFFD4AF37),
-                    Color(0xFFB58D3F),
+                    Color(0xFFFFF176), 
+                    Color(0xFFFFD700), 
+                    Color(0xFFFFB300), 
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
               
-              const SizedBox(width: 150),
+              const SizedBox(width: 80),
             ],
           ),
         ),
         
         Container(
-          color: theme.primaryTextColor.withOpacity(0.05),
+          color: Colors.white.withOpacity(0.05),
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
           child: Center(
             child: Row(
@@ -556,7 +542,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
               children: [
                 Text(
                   _nextMinyan == null ? 'אין מניינים קרובים' : 'המניין הבא:', 
-                  style: GoogleFonts.getFont(theme.primaryFont, fontSize: 22, color: theme.primaryTextColor.withOpacity(0.8))
+                  style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white70)
                 ),
                 const SizedBox(width: 12),
                 if (_nextMinyan != null) ...[
@@ -564,11 +550,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     text: TextSpan(
-                      style: GoogleFonts.getFont(theme.primaryFont, fontSize: 22, color: theme.accentColor),
+                      style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white),
                       children: [
                         TextSpan(
                           text: '${_nextMinyan!.minyan.name} ',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFFD700)),
                         ),
                         const TextSpan(text: 'בשעה '),
                         TextSpan(
@@ -582,15 +568,15 @@ class _DisplayWindowState extends State<DisplayWindow> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 24),
                   Text(
                     'בעוד:',
-                    style: GoogleFonts.getFont(theme.primaryFont, fontSize: 22, color: theme.primaryTextColor.withOpacity(0.8)),
+                    style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: Colors.white70),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     _nextMinyanCountdown,
-                    style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                    style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 26, fontWeight: FontWeight.bold, color: Colors.redAccent),
                     textDirection: ui.TextDirection.ltr,
                   ),
                 ],

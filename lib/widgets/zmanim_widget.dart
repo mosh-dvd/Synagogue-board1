@@ -19,22 +19,20 @@ class ZmanimWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final dataProvider = Provider.of<DataProvider>(context);
     final simulationDate = dataProvider.simulationDate;
-    final theme = dataProvider.theme; // קבלת העיצוב
+    final theme = dataProvider.theme;
 
     final dailyTimes = ZmanimHelper.calculateDailyTimes(location, date: simulationDate);
     final timesList = dailyTimes.entries.toList();
 
+    // שימוש בצבעים בהירים עבור העיצוב המודרני (Dark Mode)
+    final Color textColor = Colors.white;
+    final Color accentColor = Colors.amberAccent;
+
     return Container(
       padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: theme.zmanimColumnColor,
-        borderRadius: BorderRadius.circular(16),
-        border: showBorders
-            ? Border.all(
-                color: theme.borderColor,
-                width: theme.borderWidth,
-              )
-            : null,
+      // ביטלנו את הרקע האטום כדי שיראו את ה-GlassContainer
+      decoration: const BoxDecoration(
+        color: Colors.transparent, 
       ),
       child: Column(
         children: [
@@ -44,13 +42,13 @@ class ZmanimWidget extends StatelessWidget {
               'זמני היום',
               style: GoogleFonts.getFont(
                 theme.primaryFont,
-                fontSize: 26,
-                fontWeight: FontWeight.w500,
-                color: theme.primaryTextColor,
+                fontSize: 28,
+                fontWeight: FontWeight.w300, // פונט דק יותר למראה מודרני
+                color: textColor,
               ),
             ),
           ),
-          const Divider(thickness: 1),
+          Divider(thickness: 1, color: Colors.white.withOpacity(0.3)),
           Expanded(
             child: AutoScrollingListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -64,8 +62,8 @@ class ZmanimWidget extends StatelessWidget {
                         entry.key,
                         style: GoogleFonts.getFont(
                           theme.primaryFont,
-                          fontSize: 20,
-                          color: theme.primaryTextColor.withOpacity(0.9),
+                          fontSize: 22,
+                          color: textColor.withOpacity(0.9),
                         ),
                       ),
                       Text(
@@ -74,7 +72,7 @@ class ZmanimWidget extends StatelessWidget {
                           theme.secondaryFont,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: theme.primaryTextColor,
+                          color: accentColor,
                         ),
                         textDirection: TextDirection.ltr,
                       ),
