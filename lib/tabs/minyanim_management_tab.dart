@@ -1,5 +1,3 @@
-// lib/tabs/minyanim_management_tab.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
@@ -88,9 +86,11 @@ class MinyanimManagementTab extends StatelessWidget {
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   final newMinyan = Minyan( id: minyanToEdit?.id, name: nameController.text, roomId: selectedRoom!.id!, scheduleType: selectedScheduleType, timeType: selectedTimeType, time: selectedTimeType == MinyanTimeType.FIXED ? timeController.text : null, relativeZman: selectedTimeType == MinyanTimeType.RELATIVE ? selectedRelativeZman : null, relativeOffsetMinutes: selectedTimeType == MinyanTimeType.RELATIVE ? int.parse(offsetController.text) : null, );
-                  if (minyanToEdit == null) {
-                    await DatabaseHelper().insertMinyan(newMinyan);
-                  }
+                  
+                  // הפונקציה insertMinyan ב-DatabaseHelper משתמשת ב-ConflictAlgorithm.replace
+                  // לכן היא תעדכן אם ה-ID קיים, ותוסיף חדש אם לא.
+                  await DatabaseHelper().insertMinyan(newMinyan);
+                  
                   Provider.of<DataProvider>(context, listen: false).fetchAllData();
                   Navigator.of(ctx).pop();
                 }
@@ -178,12 +178,23 @@ class MinyanimManagementTab extends StatelessWidget {
                   leading: const Icon(Icons.access_time_filled_rounded),
                   title: Text('${minyan.name} - ${minyan.roomName ?? 'חדר לא ידוע'}'),
                   subtitle: Text('$timeDisplay (${_getScheduleTypeName(minyan.scheduleType)})'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () async {
-                      await DatabaseHelper().deleteMinyan(minyan.id!);
-                      Provider.of<DataProvider>(context, listen: false).fetchAllData();
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // כפתור עריכה
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _showAddOrEditMinyanDialog(context, rooms, minyan),
+                      ),
+                      // כפתור מחיקה
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () async {
+                          await DatabaseHelper().deleteMinyan(minyan.id!);
+                          Provider.of<DataProvider>(context, listen: false).fetchAllData();
+                        },
+                      ),
+                    ],
                   ),
                 ),
               );

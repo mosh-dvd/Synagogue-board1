@@ -302,6 +302,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
                 ),
               ),
             ),
+            // הוספת התאריך העברי בתחתית המסך
+            if (_roomSettings!.showCalendar)
+              Container(
+                width: double.infinity,
+                color: theme.primaryTextColor.withOpacity(0.05),
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                child: const Center(child: HebcalWidget()),
+              ),
           ],
         ),
       ),
@@ -434,12 +442,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
     );
   }
 
-  // --- זוהי הפונקציה עם השינויים הלוגיים שרצית לשמור ---
   Widget _buildMessageLayout() {
     final bool isClockInMainPanel = _roomSettings!.showClock && _roomSettings!.clockPosition == ClockPosition.mainPanel;
     const double spacing = 12.0;
 
-    // יוצר את הווידג'טים של חלוניות ההודעות
     Widget messagePanelsWidget;
     
     final panels = [
@@ -487,17 +493,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
       messagePanelsWidget = Column(children: messageRows);
     }
     
-    // התנאי הראשי: אם צריך להציג את השעון הגדול
     if (isClockInMainPanel) {
       return Column(
         children: [
-          // חלק השעון (תופס כשליש מהמקום)
           Expanded(
             flex: 1,
             child: LargeClockWidget(roomSettings: _roomSettings!),
           ),
           const SizedBox(height: spacing),
-          // חלק ההודעות (תופס כשני שליש מהמקום)
           Expanded(
             flex: 2,
             child: messagePanelsWidget,
@@ -505,7 +508,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
         ],
       );
     } 
-    // אם לא צריך להציג את השעון הגדול
     else {
       return messagePanelsWidget;
     }
@@ -540,10 +542,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                 ),
               ),
               
-              if (_roomSettings!.showCalendar) 
-                const HebcalWidget()
-              else
-                const SizedBox(width: 150),
+              const SizedBox(width: 150),
             ],
           ),
         ),

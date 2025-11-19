@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
-
+import 'package:synagogue_display/data/zmanim_helper.dart';
 
 class HebcalWidget extends StatelessWidget {
   const HebcalWidget({Key? key}) : super(key: key);
@@ -28,6 +28,34 @@ class HebcalWidget extends StatelessWidget {
         return 'אדר ב׳';
       default:
         return '';
+    }
+  }
+
+  String _getDayOfWeekName(int day) {
+    switch (day) {
+      case 1: return 'יום ראשון';
+      case 2: return 'יום שני';
+      case 3: return 'יום שלישי';
+      case 4: return 'יום רביעי';
+      case 5: return 'יום חמישי';
+      case 6: return 'יום שישי';
+      case 7: return 'שבת קודש';
+      default: return '';
+    }
+  }
+
+  String _getNextDayLeilName(int currentDay) {
+    // currentDay 1 = Sunday. If current is Sunday night -> Leil Sheni (2)
+    int nextDay = (currentDay % 7) + 1;
+    switch (nextDay) {
+      case 1: return 'ליל ראשון';
+      case 2: return 'ליל שני';
+      case 3: return 'ליל שלישי';
+      case 4: return 'ליל רביעי';
+      case 5: return 'ליל חמישי';
+      case 6: return 'ליל שישי';
+      case 7: return 'ליל שבת קודש';
+      default: return '';
     }
   }
   
@@ -78,28 +106,49 @@ class HebcalWidget extends StatelessWidget {
     return str;
   }
 
-  String getFormattedHebrewDate(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
     final dataProvider = Provider.of<DataProvider>(context);
     final simulationDate = dataProvider.simulationDate;
+    final location = dataProvider.location;
+    final theme = dataProvider.theme;
+
+    // 1. חישוב זמני היום כדי לדעת אם עברנו את צאת הכוכבים
+    final zmanim = ZmanimHelper.getZmanimDateTimes(location, date: simulationDate);
+    final tzais = zmanim[RelativeZman.tzais];
+
+    DateTime displayDate = simulationDate;
+    bool isAfterTzais = false;
+
+    if (tzais != null && simulationDate.isAfter(tzais)) {
+      isAfterTzais = true;
+      displayDate = simulationDate.add(const Duration(days: 1)); // קידום יום אחד לתאריך העברי
+    }
     
-    final jewishDate = JewishDate.fromDateTime(simulationDate);
+    // 2. חישוב התאריך העברי
+    final jewishDate = JewishDate.fromDateTime(displayDate);
+
+    // 3. בניית המחרוזת
+    String dayName;
+    if (isAfterTzais) {
+       dayName = _getNextDayLeilName(simulationDate.weekday);
+    } else {
+       dayName = _getDayOfWeekName(simulationDate.weekday);
+    }
 
     final day = toGematria(jewishDate.getJewishDayOfMonth());
     final month = _getMonthName(jewishDate);
     final year = toGematria(jewishDate.getJewishYear() % 1000);
 
-    return '$day $month $year';
-  }
+    final fullDateString = '$dayName, $day $month $year';
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Provider.of<DataProvider>(context).theme;
     return Text(
-      getFormattedHebrewDate(context),
+      fullDateString,
       style: GoogleFonts.getFont(
         theme.primaryFont,
         color: theme.primaryTextColor, 
-        fontSize: 24
+        fontSize: 32, 
+        fontWeight: FontWeight.bold
       ),
     );
   }
