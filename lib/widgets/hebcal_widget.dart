@@ -1,3 +1,5 @@
+// lib/widgets/hebcal_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kosher_dart/kosher_dart.dart';
@@ -45,7 +47,6 @@ class HebcalWidget extends StatelessWidget {
   }
 
   String _getNextDayLeilName(int currentDay) {
-    // currentDay 1 = Sunday. If current is Sunday night -> Leil Sheni (2)
     int nextDay = (currentDay % 7) + 1;
     switch (nextDay) {
       case 1: return 'ליל ראשון';
@@ -70,39 +71,17 @@ class HebcalWidget extends StatelessWidget {
     var n = number;
     var str = '';
     
-    while(n >= 400) {
-        str += 'ת';
-        n -= 400;
-    }
-
-    if (n >= 100) {
-      str += hebrewHundreds[n ~/ 100];
-      n %= 100;
-    }
-
-    if (n == 15) {
-      str += 'ט"ו';
-      n = 0;
-    } else if (n == 16) {
-      str += 'ט"ז';
-      n = 0;
-    }
-
-    if (n >= 10) {
-      str += hebrewTens[n ~/ 10];
-      n %= 10;
-    }
-
-    if (n > 0) {
-      str += hebrewOnes[n];
-    }
+    while(n >= 400) { str += 'ת'; n -= 400; }
+    if (n >= 100) { str += hebrewHundreds[n ~/ 100]; n %= 100; }
+    if (n == 15) { str += 'ט"ו'; n = 0; } 
+    else if (n == 16) { str += 'ט"ז'; n = 0; }
+    if (n >= 10) { str += hebrewTens[n ~/ 10]; n %= 10; }
+    if (n > 0) { str += hebrewOnes[n]; }
     
-    if (str.length == 1) {
-      str += "'";
-    } else if (str.length > 1 && !str.contains('"')) {
+    if (str.length == 1) str += "'";
+    else if (str.length > 1 && !str.contains('"')) {
       str = str.substring(0, str.length - 1) + '"' + str.substring(str.length - 1);
     }
-    
     return str;
   }
 
@@ -113,24 +92,32 @@ class HebcalWidget extends StatelessWidget {
     final location = dataProvider.location;
     final theme = dataProvider.theme;
 
-    // 1. חישוב זמני היום כדי לדעת אם עברנו את צאת הכוכבים
+    // חישוב זמנים לקביעת יום/לילה
     final zmanim = ZmanimHelper.getZmanimDateTimes(location, date: simulationDate);
-    final tzais = zmanim[RelativeZman.tzais];
-
-    DateTime displayDate = simulationDate;
-    bool isAfterTzais = false;
-
-    if (tzais != null && simulationDate.isAfter(tzais)) {
-      isAfterTzais = true;
-      displayDate = simulationDate.add(const Duration(days: 1)); // קידום יום אחד לתאריך העברי
+    final sunset = zmanim[RelativeZman.sunset];
+    
+    bool isNightTime = false;
+    
+    // הלוגיקה החדשה: 20 דקות אחרי השקיעה = לילה
+    if (sunset != null) {
+      final switchTime = sunset.add(const Duration(minutes: 20));
+      if (simulationDate.isAfter(switchTime)) {
+        isNightTime = true;
+      }
     }
     
-    // 2. חישוב התאריך העברי
-    final jewishDate = JewishDate.fromDateTime(displayDate);
+    // אם לילה, מקדמים את התאריך העברי ליום הבא
+    DateTime jewishCalcDate = simulationDate;
+    if (isNightTime) {
+      jewishCalcDate = simulationDate.add(const Duration(days: 1));
+    }
+    
+    final jewishDate = JewishDate.fromDateTime(jewishCalcDate);
 
-    // 3. בניית המחרוזת
+    // קביעת הטקסט "יום X" או "ליל X"
     String dayName;
-    if (isAfterTzais) {
+    if (isNightTime) {
+       // משתמשים ביום הנוכחי (לפני הקידום) כדי לקבל את "ליל [היום הבא]"
        dayName = _getNextDayLeilName(simulationDate.weekday);
     } else {
        dayName = _getDayOfWeekName(simulationDate.weekday);
