@@ -1,6 +1,7 @@
 // lib/tabs/minyanim_management_tab.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
 import 'package:synagogue_display/data/database_helper.dart';
@@ -26,10 +27,21 @@ class MinyanimManagementTab extends StatelessWidget {
       case MinyanScheduleType.SHABBAT_DAY: return 'שבת/חג (יום)';
       case MinyanScheduleType.MOTZEI_SHABBAT: return 'מוצ"ש';
       case MinyanScheduleType.EREV_SHABBAT: return 'ערב שבת/חג (מנחה/ערבית)';
+      case MinyanScheduleType.SPECIAL_DATE: return 'תאריך מיוחד';
     }
   }
 
-  // --- דיאלוג חדש לשכפול מניינים ---
+  // --- דיאלוג ניהול ימים מיוחדים ---
+  Future<void> _showSpecialDaysManager(BuildContext context) {
+    return showDialog(
+      context: context,
+      builder: (context) => const SpecialDaysManagerDialog(),
+    ).then((_) {
+      // רענון הנתונים אחרי סגירת הדיאלוג
+      Provider.of<DataProvider>(context, listen: false).fetchAllData();
+    });
+  }
+
   Future<void> _showDuplicateDialog(BuildContext context) async {
     MinyanScheduleType? source;
     MinyanScheduleType? target;
@@ -47,14 +59,14 @@ class MinyanimManagementTab extends StatelessWidget {
               DropdownButtonFormField<MinyanScheduleType>(
                 decoration: const InputDecoration(labelText: 'העתק מ...'),
                 value: source,
-                items: MinyanScheduleType.values.map((t) => DropdownMenuItem(value: t, child: Text(_getScheduleTypeName(t)))).toList(),
+                items: MinyanScheduleType.values.where((t) => t != MinyanScheduleType.SPECIAL_DATE).map((t) => DropdownMenuItem(value: t, child: Text(_getScheduleTypeName(t)))).toList(),
                 onChanged: (v) => setState(() => source = v),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<MinyanScheduleType>(
                 decoration: const InputDecoration(labelText: 'אל...'),
                 value: target,
-                items: MinyanScheduleType.values.map((t) => DropdownMenuItem(value: t, child: Text(_getScheduleTypeName(t)))).toList(),
+                items: MinyanScheduleType.values.where((t) => t != MinyanScheduleType.SPECIAL_DATE).map((t) => DropdownMenuItem(value: t, child: Text(_getScheduleTypeName(t)))).toList(),
                 onChanged: (v) => setState(() => target = v),
               ),
             ],
@@ -66,18 +78,16 @@ class MinyanimManagementTab extends StatelessWidget {
               onPressed: (source == null || target == null || source == target) 
                 ? null 
                 : () async {
-                    // ביצוע השכפול
                     final db = DatabaseHelper();
                     final allMinyanim = await db.getMinyanim();
                     final sourceMinyanim = allMinyanim.where((m) => m.scheduleType == source).toList();
                     
                     int count = 0;
                     for (var m in sourceMinyanim) {
-                      // יצירת עותק חדש (ID null כדי שייווצר חדש)
                       final newMinyan = Minyan(
                         name: m.name,
                         roomId: m.roomId,
-                        scheduleType: target!, // הסוג החדש
+                        scheduleType: target!,
                         timeType: m.timeType,
                         time: m.time,
                         relativeZman: m.relativeZman,
@@ -102,6 +112,7 @@ class MinyanimManagementTab extends StatelessWidget {
 
   Future<void> _showAddOrEditMinyanDialog(BuildContext context, List<Room> rooms, [Minyan? minyanToEdit]) async {
     final formKey = GlobalKey<FormState>();
+    final specialSchedules = Provider.of<DataProvider>(context, listen: false).specialSchedules;
 
     final nameController = TextEditingController(text: minyanToEdit?.name);
     final timeController = TextEditingController(text: minyanToEdit?.time);
@@ -113,6 +124,16 @@ class MinyanimManagementTab extends StatelessWidget {
     }
 
     MinyanScheduleType selectedScheduleType = minyanToEdit?.scheduleType ?? MinyanScheduleType.REGULAR;
+    int? selectedSpecialScheduleId = minyanToEdit?.specialScheduleId;
+    
+    // קביעת הערך הראשוני ל-Dropdown המשולב
+    String dropdownValue;
+    if (selectedSpecialScheduleId != null) {
+      dropdownValue = 'SPECIAL_$selectedSpecialScheduleId';
+    } else {
+      dropdownValue = selectedScheduleType.name;
+    }
+
     MinyanTimeType selectedTimeType = minyanToEdit?.timeType ?? MinyanTimeType.FIXED;
     RelativeZman? selectedRelativeZman = minyanToEdit?.relativeZman ?? RelativeZman.sunrise;
 
@@ -123,6 +144,30 @@ class MinyanimManagementTab extends StatelessWidget {
           title: Text(minyanToEdit == null ? 'הוספת מניין חדש' : 'עריכת מניין'),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
+              
+              // בניית רשימת האפשרויות ל-Dropdown
+              List<DropdownMenuItem<String>> scheduleItems = [];
+              
+              // הוספת סוגים רגילים
+              for (var type in MinyanScheduleType.values) {
+                if (type != MinyanScheduleType.SPECIAL_DATE) {
+                   scheduleItems.add(DropdownMenuItem(value: type.name, child: Text(_getScheduleTypeName(type))));
+                }
+              }
+              
+              // הוספת מפריד וכותרת אם יש ימים מיוחדים
+              if (specialSchedules.isNotEmpty) {
+                 scheduleItems.add(const DropdownMenuItem(enabled: false, value: 'DIVIDER', child: Divider()));
+                 scheduleItems.add(const DropdownMenuItem(enabled: false, value: 'HEADER', child: Text('--- לוחות מיוחדים ---', style: TextStyle(fontSize: 12, color: Colors.grey))));
+                 
+                 for (var schedule in specialSchedules) {
+                    scheduleItems.add(DropdownMenuItem(
+                      value: 'SPECIAL_${schedule.id}',
+                      child: Text('📅 ${schedule.name} (${DateFormat('dd/MM').format(schedule.date)})')
+                    ));
+                 }
+              }
+
               return Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -133,11 +178,24 @@ class MinyanimManagementTab extends StatelessWidget {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<Room>( hint: const Text('בחר חדר'), value: selectedRoom, items: rooms.map((room) => DropdownMenuItem(value: room, child: Text(room.name))).toList(), onChanged: (Room? newValue) => setState(() => selectedRoom = newValue), validator: (v) => v == null ? 'חובה לבחור חדר' : null, ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<MinyanScheduleType>(
+                      DropdownButtonFormField<String>(
                         decoration: const InputDecoration(labelText: 'תזמון'),
-                        value: selectedScheduleType,
-                        items: MinyanScheduleType.values.map((type) => DropdownMenuItem(value: type, child: Text(_getScheduleTypeName(type)))).toList(),
-                        onChanged: (v) => setState(() => selectedScheduleType = v!),
+                        value: dropdownValue,
+                        items: scheduleItems,
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() {
+                              dropdownValue = v;
+                              if (v.startsWith('SPECIAL_')) {
+                                selectedSpecialScheduleId = int.parse(v.split('_')[1]);
+                                selectedScheduleType = MinyanScheduleType.SPECIAL_DATE; // סוג פנימי לסימון
+                              } else {
+                                selectedSpecialScheduleId = null;
+                                selectedScheduleType = MinyanScheduleType.values.firstWhere((e) => e.name == v);
+                              }
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<MinyanTimeType>( decoration: const InputDecoration(labelText: 'סוג הזמן'), value: selectedTimeType, items: const [ DropdownMenuItem(value: MinyanTimeType.FIXED, child: Text('שעה קבועה')), DropdownMenuItem(value: MinyanTimeType.RELATIVE, child: Text('יחסי לזמן ביום')), ], onChanged: (v) => setState(() => selectedTimeType = v!), ),
@@ -158,9 +216,25 @@ class MinyanimManagementTab extends StatelessWidget {
               child: const Text('שמירה'),
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
-                  final newMinyan = Minyan( id: minyanToEdit?.id, name: nameController.text, roomId: selectedRoom!.id!, scheduleType: selectedScheduleType, timeType: selectedTimeType, time: selectedTimeType == MinyanTimeType.FIXED ? timeController.text : null, relativeZman: selectedTimeType == MinyanTimeType.RELATIVE ? selectedRelativeZman : null, relativeOffsetMinutes: selectedTimeType == MinyanTimeType.RELATIVE ? int.parse(offsetController.text) : null, );
+                  final newMinyan = Minyan(
+                    id: minyanToEdit?.id,
+                    name: nameController.text,
+                    roomId: selectedRoom!.id!,
+                    scheduleType: selectedScheduleType,
+                    specialScheduleId: selectedSpecialScheduleId,
+                    timeType: selectedTimeType,
+                    time: selectedTimeType == MinyanTimeType.FIXED ? timeController.text : null,
+                    relativeZman: selectedTimeType == MinyanTimeType.RELATIVE ? selectedRelativeZman : null,
+                    relativeOffsetMinutes: selectedTimeType == MinyanTimeType.RELATIVE ? int.parse(offsetController.text) : null,
+                  );
                   
-                  await DatabaseHelper().insertMinyan(newMinyan);
+                  if (newMinyan.id == null) {
+                    await DatabaseHelper().insertMinyan(newMinyan);
+                  } else {
+                     // עבור עדכון - צריך להשתמש בפונקציה אחרת אם יש, או למחוק ולהכניס. 
+                     // כרגע insertMinyan עושה conflict replace אז זה בסדר לעדכון גם כן אם ה ID קיים
+                     await DatabaseHelper().insertMinyan(newMinyan);
+                  }
                   
                   Provider.of<DataProvider>(context, listen: false).fetchAllData();
                   Navigator.of(ctx).pop();
@@ -216,21 +290,25 @@ class MinyanimManagementTab extends StatelessWidget {
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             elevation: 1,
             actions: [
-              // --- כפתור השכפול החדש ---
+              TextButton.icon(
+                icon: const Icon(Icons.calendar_today),
+                label: const Text('ימים מיוחדים'),
+                onPressed: () => _showSpecialDaysManager(context),
+              ),
+              const SizedBox(width: 8),
               TextButton.icon(
                 icon: const Icon(Icons.copy_all),
                 label: const Text('שכפול'),
                 onPressed: () => _showDuplicateDialog(context),
               ),
-              const SizedBox(width: 8),
-              TextButton.icon(
+              IconButton(
                 icon: const Icon(Icons.file_upload_outlined),
-                label: const Text('ייבוא'),
+                tooltip: 'ייבוא',
                 onPressed: () => _handleImport(context),
               ),
-              TextButton.icon(
+              IconButton(
                 icon: const Icon(Icons.file_download_outlined),
-                label: const Text('ייצוא'),
+                tooltip: 'ייצוא',
                 onPressed: () => _handleExport(context),
               ),
               const SizedBox(width: 8),
@@ -250,12 +328,21 @@ class MinyanimManagementTab extends StatelessWidget {
                 final offsetStr = offset == 0 ? '' : (offset > 0 ? ' +$offset דק\'' : ' $offset דק\'');
                 timeDisplay = '$zmanName$offsetStr';
               }
+              
+              String scheduleDisplay;
+              if (minyan.specialScheduleId != null) {
+                final special = dataProvider.specialSchedules.firstWhereOrNull((s) => s.id == minyan.specialScheduleId);
+                scheduleDisplay = special != null ? '📅 ${special.name}' : 'יום מיוחד (נמחק)';
+              } else {
+                scheduleDisplay = _getScheduleTypeName(minyan.scheduleType);
+              }
+
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 4),
                 child: ListTile(
                   leading: const Icon(Icons.access_time_filled_rounded),
                   title: Text('${minyan.name} - ${minyan.roomName ?? 'חדר לא ידוע'}'),
-                  subtitle: Text('$timeDisplay (${_getScheduleTypeName(minyan.scheduleType)})'),
+                  subtitle: Text('$timeDisplay ($scheduleDisplay)'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -283,6 +370,107 @@ class MinyanimManagementTab extends StatelessWidget {
             tooltip: 'הוסף מניין',
             child: const Icon(Icons.add),
           ),
+        );
+      },
+    );
+  }
+}
+
+class SpecialDaysManagerDialog extends StatefulWidget {
+  const SpecialDaysManagerDialog({Key? key}) : super(key: key);
+
+  @override
+  _SpecialDaysManagerDialogState createState() => _SpecialDaysManagerDialogState();
+}
+
+class _SpecialDaysManagerDialogState extends State<SpecialDaysManagerDialog> {
+  final TextEditingController _nameController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<DataProvider>(
+      builder: (context, dataProvider, child) {
+        return AlertDialog(
+          title: const Text('ניהול ימים מיוחדים'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // טופס הוספה
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: 'שם היום (למשל: פורים)'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.calendar_month),
+                        label: Text(DateFormat('dd/MM').format(_selectedDate)),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                          );
+                          if (picked != null) {
+                            setState(() => _selectedDate = picked);
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle, color: Colors.green),
+                      onPressed: () async {
+                        if (_nameController.text.isNotEmpty) {
+                          await DatabaseHelper().insertSpecialSchedule(
+                            SpecialSchedule(name: _nameController.text, date: _selectedDate)
+                          );
+                          _nameController.clear();
+                          Provider.of<DataProvider>(context, listen: false).fetchAllData();
+                        }
+                      },
+                    )
+                  ],
+                ),
+                const Divider(height: 30),
+                const Text('ימים קיימים:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                // רשימת ימים קיימים
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: dataProvider.specialSchedules.length,
+                    itemBuilder: (context, index) {
+                      final schedule = dataProvider.specialSchedules[index];
+                      return ListTile(
+                        title: Text(schedule.name),
+                        subtitle: Text(DateFormat('dd/MM/yyyy').format(schedule.date)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            await DatabaseHelper().deleteSpecialSchedule(schedule.id!);
+                            Provider.of<DataProvider>(context, listen: false).fetchAllData();
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(child: const Text('סגור'), onPressed: () => Navigator.of(context).pop()),
+          ],
         );
       },
     );

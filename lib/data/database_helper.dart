@@ -12,7 +12,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 19, // שונה ל-19
+      version: 20, // שודרג ל-20
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: false,
@@ -41,6 +41,15 @@ class DatabaseHelper {
         font_scale REAL NOT NULL DEFAULT 1.0
       )
     ''');
+    
+    // הוספת הטבלה החדשה גם ביצירה מאפס
+    await db.execute('''
+      CREATE TABLE special_schedules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        date TEXT NOT NULL
+      )
+    ''');
 
     await db.execute('''
       CREATE TABLE minyanim (
@@ -48,16 +57,20 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         room_id INTEGER NOT NULL,
         schedule_type TEXT NOT NULL DEFAULT 'REGULAR',
+        special_schedule_id INTEGER,
         time_type TEXT NOT NULL DEFAULT 'FIXED',
         time TEXT,
         relative_zman TEXT,
         relative_offset_minutes INTEGER,
-        FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE
+        FOREIGN KEY (room_id) REFERENCES rooms (id) ON DELETE CASCADE,
+        FOREIGN KEY (special_schedule_id) REFERENCES special_schedules (id) ON DELETE CASCADE
       )
     ''');
     
     await db.execute('''CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)''');
     await db.insert('settings', {'key': 'location', 'value': 'ירושלים'});
+    await db.insert('settings', {'key': 'nusach', 'value': 'EDOT_HAMIZRACH'}); // ברירת מחדל
+
     await db.execute('''CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, content TEXT NOT NULL, duration INTEGER NOT NULL DEFAULT 10, display_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, panel_index INTEGER NOT NULL DEFAULT 1)''');
     await db.execute('''CREATE TABLE message_room_link (message_id INTEGER, room_id INTEGER, PRIMARY KEY (message_id, room_id), FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE, FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE)''');
 
@@ -136,8 +149,22 @@ class DatabaseHelper {
     if (oldVersion < 19) {
       await db.execute('ALTER TABLE rooms ADD COLUMN font_scale REAL NOT NULL DEFAULT 1.0');
     }
+    
+    // --- שדרוג לגרסה 20 ---
+    if (oldVersion < 20) {
+      await db.execute('''
+        CREATE TABLE special_schedules (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          date TEXT NOT NULL
+        )
+      ''');
+      await db.execute('ALTER TABLE minyanim ADD COLUMN special_schedule_id INTEGER REFERENCES special_schedules(id) ON DELETE CASCADE');
+      await db.insert('settings', {'key': 'nusach', 'value': 'EDOT_HAMIZRACH'}, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
   }
 
+  // ... (getSetting, updateSetting, deleteSetting נשארים ללא שינוי)
   Future<String?> getSetting(String key) async {
     final db = await database;
     final maps = await db.query('settings', where: 'key = ?', whereArgs: [key]);
@@ -154,6 +181,7 @@ class DatabaseHelper {
     await db.delete('settings', where: 'key = ?', whereArgs: [key]);
   }
 
+  // ... (insertRoom, updateRoom, getRooms, deleteRoom נשארים ללא שינוי)
   Future<void> insertRoom(Room room) async {
     final db = await database;
     await db.insert('rooms', room.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -176,6 +204,29 @@ class DatabaseHelper {
     await db.delete('rooms', where: 'id = ?', whereArgs: [id]);
   }
 
+  // --- ניהול ימים מיוחדים ---
+  Future<List<SpecialSchedule>> getSpecialSchedules() async {
+    final db = await database;
+    final maps = await db.query('special_schedules', orderBy: 'date ASC');
+    return List.generate(maps.length, (i) => SpecialSchedule.fromMap(maps[i]));
+  }
+
+  Future<void> insertSpecialSchedule(SpecialSchedule schedule) async {
+    final db = await database;
+    final map = schedule.toMap(); map.remove('id');
+    await db.insert('special_schedules', map);
+  }
+
+  Future<void> deleteSpecialSchedule(int id) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('special_schedules', where: 'id = ?', whereArgs: [id]);
+      // מחיקת כל המניינים שקשורים ליום הזה
+      await txn.delete('minyanim', where: 'special_schedule_id = ?', whereArgs: [id]);
+    });
+  }
+
+  // ... (minyanim functions)
   Future<void> insertMinyan(Minyan minyan) async {
     final db = await database;
     await db.insert('minyanim', minyan.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -207,6 +258,7 @@ class DatabaseHelper {
     });
   }
 
+  // ... (messages and themes functions remain unchanged)
   Future<int> insertMessage(Message message) async {
     final db = await database;
     return await db.insert('messages', message.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);

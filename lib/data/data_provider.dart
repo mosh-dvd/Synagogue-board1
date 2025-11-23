@@ -12,6 +12,10 @@ class DataProvider with ChangeNotifier {
   String _location = 'ירושלים';
   DisplayTheme _theme = DisplayTheme.defaultTheme();
   
+  // שדות חדשים
+  List<SpecialSchedule> _specialSchedules = [];
+  Nusach _nusach = Nusach.EDOT_HAMIZRACH;
+  
   DateTime? _simulationDate;
 
   List<Room> get rooms => _rooms;
@@ -20,6 +24,9 @@ class DataProvider with ChangeNotifier {
   Map<String, List<dynamic>> get messageLinks => _messageLinks;
   String get location => _location;
   DisplayTheme get theme => _theme;
+  
+  List<SpecialSchedule> get specialSchedules => _specialSchedules;
+  Nusach get nusach => _nusach;
 
   DateTime get simulationDate {
     if (_simulationDate == null) {
@@ -41,6 +48,13 @@ class DataProvider with ChangeNotifier {
     _messageLinks = await _dbHelper.getAllMessageLinks();
     _location = await _dbHelper.getSetting('location') ?? 'ירושלים';
     _theme = await _dbHelper.getTheme();
+    _specialSchedules = await _dbHelper.getSpecialSchedules(); // טעינת ימים מיוחדים
+    
+    // טעינת נוסח
+    String? nusachStr = await _dbHelper.getSetting('nusach');
+    if (nusachStr != null) {
+      _nusach = Nusach.values.firstWhere((e) => e.name == nusachStr, orElse: () => Nusach.EDOT_HAMIZRACH);
+    }
     
     final simDateStr = await _dbHelper.getSetting('simulation_date');
     if (simDateStr != null) {
@@ -55,6 +69,12 @@ class DataProvider with ChangeNotifier {
   Future<void> updateTheme(DisplayTheme newTheme) async {
     await _dbHelper.updateTheme(newTheme);
     await fetchAllData();
+  }
+  
+  Future<void> updateNusach(Nusach newNusach) async {
+    _nusach = newNusach;
+    await _dbHelper.updateSetting('nusach', newNusach.name);
+    notifyListeners();
   }
 
   Future<void> setSimulationDate(DateTime? date) async {

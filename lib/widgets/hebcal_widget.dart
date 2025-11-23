@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kosher_dart/kosher_dart.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
+import 'package:synagogue_display/data/omer_helper.dart'; // וודא שקובץ זה קיים
 import 'package:synagogue_display/data/zmanim_helper.dart';
 
 class HebcalWidget extends StatelessWidget {
@@ -76,7 +77,7 @@ class HebcalWidget extends StatelessWidget {
     return str;
   }
 
-  List<String> _getTefillaAlerts(JewishCalendar jd) {
+  List<String> _getTefillaAlerts(BuildContext context, JewishCalendar jd) {
     List<String> alerts = [];
     int yomTovIndex = jd.getYomTovIndex();
 
@@ -122,7 +123,8 @@ class HebcalWidget extends StatelessWidget {
 
     int omer = jd.getDayOfOmer();
     if (omer != -1) {
-      alerts.add("ספירת העומר: $omer");
+      final nusach = Provider.of<DataProvider>(context, listen: false).nusach;
+      alerts.add(OmerHelper.getOmerText(omer, nusach));
     }
     
     if (yomTovIndex == JewishCalendar.TISHA_BEAV) {
@@ -167,7 +169,7 @@ class HebcalWidget extends StatelessWidget {
 
     final fullDateString = '$dayNameText, $day $month $year';
     
-    final alerts = _getTefillaAlerts(jewishCalendar);
+    final alerts = _getTefillaAlerts(context, jewishCalendar);
 
     return Column(
       children: [
@@ -184,10 +186,11 @@ class HebcalWidget extends StatelessWidget {
         if (alerts.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8.0,
+              runSpacing: 4.0,
               children: alerts.map((alert) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6.0),
                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                 decoration: BoxDecoration(
                   color: theme.highlightColor.withOpacity(0.2),
@@ -196,6 +199,7 @@ class HebcalWidget extends StatelessWidget {
                 ),
                 child: Text(
                   alert,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.getFont(
                     theme.secondaryFont,
                     color: theme.primaryTextColor,

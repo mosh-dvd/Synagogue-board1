@@ -1,3 +1,5 @@
+// lib/data/models.dart
+
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
 
@@ -9,6 +11,12 @@ enum ClockPosition {
 enum MinyanDisplayMode {
   THIS_ROOM_ONLY,
   ALL
+}
+
+enum Nusach {
+  ASHKENAZ,
+  SEFARD,
+  EDOT_HAMIZRACH
 }
 
 class Room {
@@ -23,7 +31,7 @@ class Room {
   final bool showWeekdayMinyanimOnShabbat;
   final ClockPosition clockPosition;
   final bool showBorders;
-  final double fontScale; // --- שדה חדש: קנה מידה לגופנים בחדר זה ---
+  final double fontScale;
 
   Room({
     this.id,
@@ -37,7 +45,7 @@ class Room {
     this.showWeekdayMinyanimOnShabbat = false,
     this.clockPosition = ClockPosition.header,
     this.showBorders = false,
-    this.fontScale = 1.0, // ברירת מחדל
+    this.fontScale = 1.0,
   });
 
   Map<String, dynamic> toMap() {
@@ -85,10 +93,35 @@ enum MinyanScheduleType {
   REGULAR,
   SHABBAT_DAY,
   MOTZEI_SHABBAT,
-  EREV_SHABBAT
+  EREV_SHABBAT,
+  SPECIAL_DATE // *** הוספתי את זה כדי למנוע את השגיאה ***
 }
 
 enum MinyanTimeType { FIXED, RELATIVE }
+
+class SpecialSchedule {
+  final int? id;
+  final String name;
+  final DateTime date;
+
+  SpecialSchedule({this.id, required this.name, required this.date});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'date': date.toIso8601String().substring(0, 10),
+    };
+  }
+
+  factory SpecialSchedule.fromMap(Map<String, dynamic> map) {
+    return SpecialSchedule(
+      id: map['id'],
+      name: map['name'],
+      date: DateTime.parse(map['date']),
+    );
+  }
+}
 
 class Minyan {
   final int? id;
@@ -96,12 +129,12 @@ class Minyan {
   final int roomId;
   final String? roomName;
   final MinyanScheduleType scheduleType;
-  
+  final int? specialScheduleId;
+
   final MinyanTimeType timeType;
   final String? time;
   final RelativeZman? relativeZman;
   final int? relativeOffsetMinutes;
-
 
   Minyan({
     this.id,
@@ -109,6 +142,7 @@ class Minyan {
     required this.roomId,
     this.roomName,
     this.scheduleType = MinyanScheduleType.REGULAR,
+    this.specialScheduleId,
     required this.timeType,
     this.time,
     this.relativeZman,
@@ -121,6 +155,7 @@ class Minyan {
       'name': name,
       'room_id': roomId,
       'schedule_type': scheduleType.name,
+      'special_schedule_id': specialScheduleId,
       'time_type': timeType.name,
       'time': time,
       'relative_zman': relativeZman?.name,
@@ -135,6 +170,7 @@ class Minyan {
       'room_id': roomId,
       'roomName': roomName,
       'schedule_type': scheduleType.name,
+      'special_schedule_id': specialScheduleId,
       'time_type': timeType.name,
       'time': time,
       'relative_zman': relativeZman?.name,
@@ -149,6 +185,7 @@ class Minyan {
       roomId: map['room_id'],
       roomName: map['roomName'],
       scheduleType: MinyanScheduleType.values.firstWhere((e) => e.name == map['schedule_type'], orElse: () => MinyanScheduleType.REGULAR),
+      specialScheduleId: map['special_schedule_id'],
       timeType: MinyanTimeType.values.firstWhere((e) => e.name == map['time_type'], orElse: () => MinyanTimeType.FIXED),
       time: map['time'],
       relativeZman: map['relative_zman'] != null ? RelativeZman.values.firstWhere((e) => e.name == map['relative_zman'], orElse: () => RelativeZman.sunrise) : null,
