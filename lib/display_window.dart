@@ -323,7 +323,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                   padding: const EdgeInsets.symmetric(vertical: 10.0),
                   child: Column(
                     children: [
-                      // סטריפ המניין הבא
+                      // סטריפ המניין הבא - כעת משתמש ב-nextMinyanFontSize
                       if (_nextMinyan != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
@@ -332,33 +332,33 @@ class _DisplayWindowState extends State<DisplayWindow> {
                             children: [
                                Text(
                                 'המניין הבא:', 
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.8, color: theme.primaryTextColor.withOpacity(0.9))
+                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize * 0.9, color: theme.primaryTextColor.withOpacity(0.9))
                               ),
                               const SizedBox(width: 16),
                               Text(
                                 '${_nextMinyan!.minyan.name} בשעה ${DateFormat('HH:mm').format(_nextMinyan!.dateTime)}',
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.9, fontWeight: FontWeight.bold, color: theme.highlightColor),
+                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize, fontWeight: FontWeight.bold, color: theme.highlightColor),
                               ),
                               const SizedBox(width: 16),
                               Text(
                                 'בעוד:',
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.8, color: theme.primaryTextColor.withOpacity(0.9)),
+                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize * 0.9, color: theme.primaryTextColor.withOpacity(0.9)),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 _nextMinyanCountdown,
-                                style: GoogleFonts.getFont(theme.secondaryFont, fontSize: theme.dateFontSize * 0.9, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                                style: GoogleFonts.getFont(theme.secondaryFont, fontSize: theme.nextMinyanFontSize, fontWeight: FontWeight.bold, color: Colors.redAccent),
                                 textDirection: ui.TextDirection.ltr,
                               ),
                             ],
                           ),
                         )
                       else 
-                         Text('אין מניינים קרובים', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.8, color: theme.primaryTextColor.withOpacity(0.7))),
+                         Text('אין מניינים קרובים', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize, color: theme.primaryTextColor.withOpacity(0.7))),
 
                       const Divider(height: 1, thickness: 1),
                       
-                      // התאריך העברי
+                      // התאריך העברי - HebcalWidget משתמש פנימית ב-dateFontSize
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Theme(

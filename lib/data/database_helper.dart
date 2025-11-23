@@ -12,7 +12,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 17, // Changed version to 17
+      version: 18, // Changed version to 18
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: false,
@@ -80,7 +80,8 @@ class DatabaseHelper {
         sectionTitleFontSize REAL DEFAULT 28.0,
         bodyFontSize REAL DEFAULT 24.0,
         messageFontSize REAL DEFAULT 48.0,
-        dateFontSize REAL DEFAULT 32.0
+        dateFontSize REAL DEFAULT 32.0,
+        nextMinyanFontSize REAL DEFAULT 28.0
       )
     ''');
   }
@@ -126,6 +127,9 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE theme ADD COLUMN bodyFontSize REAL DEFAULT 24.0');
       await db.execute('ALTER TABLE theme ADD COLUMN messageFontSize REAL DEFAULT 48.0');
       await db.execute('ALTER TABLE theme ADD COLUMN dateFontSize REAL DEFAULT 32.0');
+    }
+    if (oldVersion < 18) {
+      await db.execute('ALTER TABLE theme ADD COLUMN nextMinyanFontSize REAL DEFAULT 28.0');
     }
   }
 

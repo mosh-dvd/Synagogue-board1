@@ -141,7 +141,9 @@ class _ThemeSettingsDialogState extends State<ThemeSettingsDialog> {
               _buildSlider('שעון עליון', _currentTheme.clockFontSize, 12, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'clockFontSize': v})),
               _buildSlider('שעון גדול (ראשי)', _currentTheme.largeClockFontSize, 50, 250, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'largeClockFontSize': v})),
               _buildSlider('טקסט הודעות', _currentTheme.messageFontSize, 20, 150, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'messageFontSize': v})),
-              _buildSlider('טקסט תאריך למטה', _currentTheme.dateFontSize, 16, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'dateFontSize': v})),
+              _buildSlider('טקסט תאריך עברי', _currentTheme.dateFontSize, 16, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'dateFontSize': v})),
+              // הסליידר החדש:
+              _buildSlider('טקסט "המניין הבא"', _currentTheme.nextMinyanFontSize, 16, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'nextMinyanFontSize': v})),
 
               const Divider(height: 30),
               const Text('מסגרות', style: TextStyle(fontWeight: FontWeight.bold)),

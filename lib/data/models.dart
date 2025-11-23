@@ -221,6 +221,7 @@ class DisplayTheme {
   final double bodyFontSize;       // טקסט רגיל (שורות מניינים)
   final double messageFontSize;    // טקסט הודעות
   final double dateFontSize;       // תאריך למטה
+  final double nextMinyanFontSize; // סטריפ המניין הבא - חדש!
 
   DisplayTheme({
     this.id = 1,
@@ -243,6 +244,7 @@ class DisplayTheme {
     this.bodyFontSize = 24.0,
     this.messageFontSize = 48.0,
     this.dateFontSize = 32.0,
+    this.nextMinyanFontSize = 28.0, // ברירת מחדל חדשה
   });
 
   factory DisplayTheme.defaultTheme() {
@@ -266,6 +268,7 @@ class DisplayTheme {
       bodyFontSize: 24.0,
       messageFontSize: 48.0,
       dateFontSize: 32.0,
+      nextMinyanFontSize: 28.0,
     );
   }
 
@@ -291,6 +294,7 @@ class DisplayTheme {
       'bodyFontSize': bodyFontSize,
       'messageFontSize': messageFontSize,
       'dateFontSize': dateFontSize,
+      'nextMinyanFontSize': nextMinyanFontSize,
     };
   }
 
@@ -309,7 +313,7 @@ class DisplayTheme {
       primaryFont: map['primaryFont'] ?? defaultT.primaryFont,
       secondaryFont: map['secondaryFont'] ?? defaultT.secondaryFont,
       borderWidth: map['borderWidth'] ?? defaultT.borderWidth,
-      // גדלים (עם הגנה מפני Null במידה והשדרוג לא עבר חלק)
+      // גדלים
       titleFontSize: map['titleFontSize'] ?? defaultT.titleFontSize,
       clockFontSize: map['clockFontSize'] ?? defaultT.clockFontSize,
       largeClockFontSize: map['largeClockFontSize'] ?? defaultT.largeClockFontSize,
@@ -317,6 +321,7 @@ class DisplayTheme {
       bodyFontSize: map['bodyFontSize'] ?? defaultT.bodyFontSize,
       messageFontSize: map['messageFontSize'] ?? defaultT.messageFontSize,
       dateFontSize: map['dateFontSize'] ?? defaultT.dateFontSize,
+      nextMinyanFontSize: map['nextMinyanFontSize'] ?? defaultT.nextMinyanFontSize,
     );
   }
 }
