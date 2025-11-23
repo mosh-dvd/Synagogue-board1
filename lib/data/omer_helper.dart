@@ -13,32 +13,35 @@ class OmerHelper {
     // בסיס המשפט: "היום X ימים"
     String text = "הַיּוֹם $dayStr";
     
-    // קביעת הסיומת לפי הנוסח
-    String suffix;
+    // קביעת המילה הסופית לפי הנוסח
+    String suffixWord;
     if (nusach == Nusach.ASHKENAZ) {
-      suffix = "בָּעוֹמֶר";
+      suffixWord = "בָּעוֹמֶר";
     } else {
-      suffix = "לָעוֹמֶר"; // עדות המזרח וספרד
+      // גם ספרד (חסידים) וגם עדות המזרח אומרים "לעומר"
+      suffixWord = "לָעוֹמֶר";
     }
     
     // --- ימים 1-6 (לפני שיש שבוע שלם) ---
     // בשבוע הראשון כולם אומרים את הסיומת מיד אחרי הימים
     if (day < 7) {
-      return "$text $suffix";
+      return "$text $suffixWord";
     }
     
     // --- יום 7 והלאה (כולל אזכור שבועות) ---
     
     String prefixShehem = "שֶׁהֵם";
     
-    if (nusach == Nusach.ASHKENAZ) {
-      // תיקון לנוסח אשכנז: הסיומת "בעומר" מגיעה בסוף המשפט
-      // דוגמה: "היום שמונה ימים, שהם שבוע אחד ויום אחד, בעומר"
-      return "$text $prefixShehem $weeksStr $suffix";
-    } else {
-      // עדות המזרח (ואחרים): הסיומת "לעומר" מגיעה מיד אחרי הימים
+    // בדיקת מיקום הסיומת
+    if (nusach == Nusach.EDOT_HAMIZRACH) {
+      // עדות המזרח: הסיומת "לעומר" מגיעה מיד אחרי הימים (באמצע המשפט)
       // דוגמה: "היום שמונה ימים לעומר, שהם שבוע אחד..."
-      return "$text $suffix $prefixShehem $weeksStr";
+      return "$text $suffixWord $prefixShehem $weeksStr";
+    } else {
+      // אשכנז וספרד (חסידים): הסיומת מגיעה בסוף המשפט
+      // אשכנז דוגמה: "היום... שהם... בעומר"
+      // ספרד דוגמה: "היום... שהם... לעומר"
+      return "$text $prefixShehem $weeksStr $suffixWord";
     }
   }
 
