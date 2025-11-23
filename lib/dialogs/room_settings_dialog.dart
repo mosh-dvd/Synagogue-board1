@@ -18,7 +18,8 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
   late int _activeMessagePanels;
   late bool _showWeekdayMinyanimOnShabbat;
   late ClockPosition _clockPosition;
-  late bool _showBorders; // --- הוספה: משתנה חדש ---
+  late bool _showBorders;
+  late double _fontScale; // --- משתנה חדש ---
 
   @override
   void initState() {
@@ -30,7 +31,8 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
     _activeMessagePanels = widget.room.activeMessagePanels;
     _showWeekdayMinyanimOnShabbat = widget.room.showWeekdayMinyanimOnShabbat;
     _clockPosition = widget.room.clockPosition;
-    _showBorders = widget.room.showBorders; // --- הוספה: אתחול ---
+    _showBorders = widget.room.showBorders;
+    _fontScale = widget.room.fontScale; // --- אתחול ---
   }
 
   Future<void> _saveSettings() async {
@@ -45,7 +47,8 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
       isDisplayActive: widget.room.isDisplayActive,
       showWeekdayMinyanimOnShabbat: _showWeekdayMinyanimOnShabbat,
       clockPosition: _clockPosition,
-      showBorders: _showBorders, // --- הוספה: שמירת הערך החדש ---
+      showBorders: _showBorders,
+      fontScale: _fontScale, // --- שמירה ---
     );
     await DatabaseHelper().updateRoom(updatedRoom);
     Navigator.of(context).pop();
@@ -86,6 +89,22 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
               value: _showWeekdayMinyanimOnShabbat,
               onChanged: (bool value) => setState(() => _showWeekdayMinyanimOnShabbat = value),
             ),
+
+            const Divider(height: 30),
+            // --- חלק חדש: קנה מידה ---
+            const Text('גודל טקסט בחדר זה', style: TextStyle(fontWeight: FontWeight.bold)),
+            Slider(
+              value: _fontScale,
+              min: 0.5,
+              max: 2.0,
+              divisions: 15,
+              label: '${(_fontScale * 100).toInt()}%',
+              onChanged: (v) => setState(() => _fontScale = v),
+            ),
+            Text(
+              'קנה מידה: ${(_fontScale * 100).toInt()}% (משפיע על כל הגדלים במסך זה בלבד)',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             
             const Divider(height: 30),
             const Text('פריסת תצוגה', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -104,7 +123,6 @@ class _RoomSettingsDialogState extends State<RoomSettingsDialog> {
               },
               decoration: const InputDecoration(labelText: 'מספר חלוניות הודעות'),
             ),
-             // --- הוספה: מתג להצגת מסגרות ---
             SwitchListTile(
               title: const Text('הצג מסגרות דקורטיביות'),
               value: _showBorders,

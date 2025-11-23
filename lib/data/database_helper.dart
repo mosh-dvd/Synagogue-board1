@@ -12,7 +12,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 18, // Changed version to 18
+      version: 19, // שונה ל-19
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: false,
@@ -37,7 +37,8 @@ class DatabaseHelper {
         is_display_active INTEGER NOT NULL DEFAULT 1,
         show_weekday_minyanim_on_shabbat INTEGER NOT NULL DEFAULT 0,
         clock_position TEXT NOT NULL DEFAULT 'header',
-        show_borders INTEGER NOT NULL DEFAULT 0
+        show_borders INTEGER NOT NULL DEFAULT 0,
+        font_scale REAL NOT NULL DEFAULT 1.0
       )
     ''');
 
@@ -87,6 +88,7 @@ class DatabaseHelper {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // ... שדרוגים קודמים ...
     if (oldVersion < 11) {
       await db.execute('ALTER TABLE rooms ADD COLUMN is_display_active INTEGER NOT NULL DEFAULT 1');
     }
@@ -130,6 +132,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 18) {
       await db.execute('ALTER TABLE theme ADD COLUMN nextMinyanFontSize REAL DEFAULT 28.0');
+    }
+    if (oldVersion < 19) {
+      await db.execute('ALTER TABLE rooms ADD COLUMN font_scale REAL NOT NULL DEFAULT 1.0');
     }
   }
 

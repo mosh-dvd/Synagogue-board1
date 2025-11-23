@@ -1,4 +1,4 @@
-// lib/dialogs/theme_settings_dialog.dart
+// lib/dialogs/theme_settings_dialog.dart (קובץ מלא מעודכן)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -83,6 +83,8 @@ class _ThemeSettingsDialogState extends State<ThemeSettingsDialog> {
   }
 
   Widget _buildSlider(String label, double value, double min, double max, Function(double) onChanged) {
+    // Override min to allow very small fonts
+    final effectiveMin = 5.0; 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -91,10 +93,10 @@ class _ThemeSettingsDialogState extends State<ThemeSettingsDialog> {
           child: Text('$label (${value.toInt()})', style: const TextStyle(fontWeight: FontWeight.w500)),
         ),
         Slider(
-          value: value,
-          min: min,
+          value: value < effectiveMin ? effectiveMin : value, // הגנה
+          min: effectiveMin,
           max: max,
-          divisions: (max - min).toInt(),
+          divisions: (max - effectiveMin).toInt(),
           label: value.toStringAsFixed(0),
           onChanged: (v) => setState(() => onChanged(v)),
         ),
@@ -134,16 +136,14 @@ class _ThemeSettingsDialogState extends State<ThemeSettingsDialog> {
               _buildFontPicker('גופן משני (שעות)', _currentTheme.secondaryFont, (f) => setState(() => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'secondaryFont': f!}))),
               
               const Divider(height: 30),
-              const Text('גדלי טקסט', style: TextStyle(fontWeight: FontWeight.bold)),
-              _buildSlider('כותרת עליונה', _currentTheme.titleFontSize, 20, 100, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'titleFontSize': v})),
-              _buildSlider('כותרות משנה (זמנים/תפילות)', _currentTheme.sectionTitleFontSize, 14, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'sectionTitleFontSize': v})),
-              _buildSlider('טקסט גוף (שורות)', _currentTheme.bodyFontSize, 12, 50, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'bodyFontSize': v})),
-              _buildSlider('שעון עליון', _currentTheme.clockFontSize, 12, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'clockFontSize': v})),
-              _buildSlider('שעון גדול (ראשי)', _currentTheme.largeClockFontSize, 50, 250, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'largeClockFontSize': v})),
-              _buildSlider('טקסט הודעות', _currentTheme.messageFontSize, 20, 150, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'messageFontSize': v})),
-              _buildSlider('טקסט תאריך עברי', _currentTheme.dateFontSize, 16, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'dateFontSize': v})),
-              // הסליידר החדש:
-              _buildSlider('טקסט "המניין הבא"', _currentTheme.nextMinyanFontSize, 16, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'nextMinyanFontSize': v})),
+              const Text('גדלי טקסט (גלובלי)', style: TextStyle(fontWeight: FontWeight.bold)),
+              _buildSlider('כותרת עליונה', _currentTheme.titleFontSize, 5, 100, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'titleFontSize': v})),
+              _buildSlider('כותרות משנה (זמנים/תפילות)', _currentTheme.sectionTitleFontSize, 5, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'sectionTitleFontSize': v})),
+              _buildSlider('טקסט גוף (שורות)', _currentTheme.bodyFontSize, 5, 50, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'bodyFontSize': v})),
+              _buildSlider('שעון עליון', _currentTheme.clockFontSize, 5, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'clockFontSize': v})),
+              _buildSlider('שעון גדול (ראשי)', _currentTheme.largeClockFontSize, 5, 250, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'largeClockFontSize': v})),
+              _buildSlider('טקסט הודעות', _currentTheme.messageFontSize, 5, 150, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'messageFontSize': v})),
+              _buildSlider('טקסט תאריך/מניין קרוב', _currentTheme.dateFontSize, 5, 60, (v) => _currentTheme = DisplayTheme.fromMap({..._currentTheme.toMap(), 'dateFontSize': v})),
 
               const Divider(height: 30),
               const Text('מסגרות', style: TextStyle(fontWeight: FontWeight.bold)),

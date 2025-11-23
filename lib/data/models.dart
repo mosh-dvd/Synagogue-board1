@@ -23,6 +23,7 @@ class Room {
   final bool showWeekdayMinyanimOnShabbat;
   final ClockPosition clockPosition;
   final bool showBorders;
+  final double fontScale; // --- שדה חדש: קנה מידה לגופנים בחדר זה ---
 
   Room({
     this.id,
@@ -36,6 +37,7 @@ class Room {
     this.showWeekdayMinyanimOnShabbat = false,
     this.clockPosition = ClockPosition.header,
     this.showBorders = false,
+    this.fontScale = 1.0, // ברירת מחדל
   });
 
   Map<String, dynamic> toMap() {
@@ -51,6 +53,7 @@ class Room {
       'show_weekday_minyanim_on_shabbat': showWeekdayMinyanimOnShabbat ? 1 : 0,
       'clock_position': clockPosition.name,
       'show_borders': showBorders ? 1 : 0,
+      'font_scale': fontScale,
     };
   }
 
@@ -73,6 +76,7 @@ class Room {
         orElse: () => ClockPosition.header,
       ),
       showBorders: map['show_borders'] == null ? false : map['show_borders'] == 1,
+      fontScale: map['font_scale'] ?? 1.0,
     );
   }
 }
@@ -213,15 +217,14 @@ class DisplayTheme {
   final String secondaryFont;
   final double borderWidth;
   
-  // --- שדות גודל טקסט חדשים ---
-  final double titleFontSize;      // כותרת עליונה
-  final double clockFontSize;      // שעון קטן
-  final double largeClockFontSize; // שעון גדול
-  final double sectionTitleFontSize; // כותרות משנה (זמני היום, סוג תפילה)
-  final double bodyFontSize;       // טקסט רגיל (שורות מניינים)
-  final double messageFontSize;    // טקסט הודעות
-  final double dateFontSize;       // תאריך למטה
-  final double nextMinyanFontSize; // סטריפ המניין הבא - חדש!
+  final double titleFontSize;
+  final double clockFontSize;
+  final double largeClockFontSize;
+  final double sectionTitleFontSize;
+  final double bodyFontSize;
+  final double messageFontSize;
+  final double dateFontSize;
+  final double nextMinyanFontSize;
 
   DisplayTheme({
     this.id = 1,
@@ -236,7 +239,6 @@ class DisplayTheme {
     required this.primaryFont,
     required this.secondaryFont,
     required this.borderWidth,
-    // ברירות מחדל
     this.titleFontSize = 42.0,
     this.clockFontSize = 24.0,
     this.largeClockFontSize = 120.0,
@@ -244,7 +246,7 @@ class DisplayTheme {
     this.bodyFontSize = 24.0,
     this.messageFontSize = 48.0,
     this.dateFontSize = 32.0,
-    this.nextMinyanFontSize = 28.0, // ברירת מחדל חדשה
+    this.nextMinyanFontSize = 28.0,
   });
 
   factory DisplayTheme.defaultTheme() {
@@ -260,7 +262,6 @@ class DisplayTheme {
       primaryFont: 'Rubik',
       secondaryFont: 'Tinos',
       borderWidth: 3.0,
-      // גדלים
       titleFontSize: 42.0,
       clockFontSize: 24.0,
       largeClockFontSize: 120.0,
@@ -286,7 +287,6 @@ class DisplayTheme {
       'primaryFont': primaryFont,
       'secondaryFont': secondaryFont,
       'borderWidth': borderWidth,
-      // גדלים
       'titleFontSize': titleFontSize,
       'clockFontSize': clockFontSize,
       'largeClockFontSize': largeClockFontSize,
@@ -313,7 +313,6 @@ class DisplayTheme {
       primaryFont: map['primaryFont'] ?? defaultT.primaryFont,
       secondaryFont: map['secondaryFont'] ?? defaultT.secondaryFont,
       borderWidth: map['borderWidth'] ?? defaultT.borderWidth,
-      // גדלים
       titleFontSize: map['titleFontSize'] ?? defaultT.titleFontSize,
       clockFontSize: map['clockFontSize'] ?? defaultT.clockFontSize,
       largeClockFontSize: map['largeClockFontSize'] ?? defaultT.largeClockFontSize,

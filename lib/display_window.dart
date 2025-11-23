@@ -22,6 +22,7 @@ import 'package:synagogue_display/widgets/zmanim_widget.dart';
 import 'package:synagogue_display/widgets/large_clock_widget.dart';
 import 'package:synagogue_display/widgets/gradient_text.dart';
 import 'package:synagogue_display/widgets/glass_container.dart';
+import 'package:synagogue_display/widgets/marquee_widget.dart';
 
 class DisplayWindow extends StatefulWidget {
   final int windowId;
@@ -41,7 +42,8 @@ class DisplayWindow extends StatefulWidget {
 
 class _DisplayWindowState extends State<DisplayWindow> {
   Room? _roomSettings;
-  DisplayTheme? _theme;
+  DisplayTheme? _rawTheme; // Theme from DB
+  DisplayTheme? _effectiveTheme; // Theme after scaling
   Map<MinyanScheduleType, Map<String, List<Minyan>>> _groupedMinyanim = {};
   Map<int, List<Message>> _panelMessages = {};
   String? _location;
@@ -89,6 +91,35 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
   }
   
+  // פונקציה לבניית Theme מותאם לגודל החדר
+  DisplayTheme _calculateEffectiveTheme(DisplayTheme base, double scale) {
+    if (scale == 1.0) return base;
+    
+    return DisplayTheme(
+      id: base.id,
+      scaffoldBackgroundColor: base.scaffoldBackgroundColor,
+      minyanimColumnColor: base.minyanimColumnColor,
+      zmanimColumnColor: base.zmanimColumnColor,
+      messagePanelColor: base.messagePanelColor,
+      primaryTextColor: base.primaryTextColor,
+      accentColor: base.accentColor,
+      borderColor: base.borderColor,
+      highlightColor: base.highlightColor,
+      primaryFont: base.primaryFont,
+      secondaryFont: base.secondaryFont,
+      borderWidth: base.borderWidth,
+      // Scaling font sizes
+      titleFontSize: base.titleFontSize * scale,
+      clockFontSize: base.clockFontSize * scale,
+      largeClockFontSize: base.largeClockFontSize * scale,
+      sectionTitleFontSize: base.sectionTitleFontSize * scale,
+      bodyFontSize: base.bodyFontSize * scale,
+      messageFontSize: base.messageFontSize * scale,
+      dateFontSize: base.dateFontSize * scale,
+      nextMinyanFontSize: base.nextMinyanFontSize * scale,
+    );
+  }
+
   void _processPayload(Map<String, dynamic> data) {
     if (!mounted) return;
 
@@ -185,7 +216,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
     if (mounted) {
       setState(() {
         _roomSettings = currentRoomSettings;
-        _theme = theme;
+        _rawTheme = theme;
+        _effectiveTheme = _calculateEffectiveTheme(theme, currentRoomSettings.fontScale);
         _groupedMinyanim = categorizedMinyanim;
         _panelMessages = categorizedMessages;
         _location = location;
@@ -254,13 +286,49 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
   }
   
+  Widget _buildTickerContent(DisplayTheme theme) {
+    List<Widget> tickerItems = [];
+    final textStyle = GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize, color: theme.primaryTextColor);
+    final highlightStyle = GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize, fontWeight: FontWeight.bold, color: theme.highlightColor);
+
+    // 1. תאריך עברי
+    tickerItems.add(const Text("   ")); 
+    tickerItems.add(Theme(
+        data: ThemeData(textTheme: TextTheme(bodyMedium: TextStyle(fontSize: theme.dateFontSize, color: theme.primaryTextColor))),
+        child: const HebcalWidget()
+    ));
+    
+    tickerItems.add(const SizedBox(width: 50));
+    tickerItems.add(Text(" | ", style: textStyle));
+    tickerItems.add(const SizedBox(width: 50));
+
+    // 2. המניין הבא
+    if (_nextMinyan != null) {
+      tickerItems.add(Text("המניין הבא: ", style: textStyle));
+      tickerItems.add(Text("${_nextMinyan!.minyan.name} בשעה ${DateFormat('HH:mm').format(_nextMinyan!.dateTime)}", style: highlightStyle));
+      tickerItems.add(const SizedBox(width: 20));
+      tickerItems.add(Text("בעוד: ", style: textStyle));
+      tickerItems.add(Text(_nextMinyanCountdown, style: highlightStyle.copyWith(color: Colors.redAccent, fontFamily: theme.secondaryFont)));
+    } else {
+      tickerItems.add(Text("אין מניינים קרובים", style: textStyle));
+    }
+    
+    tickerItems.add(const SizedBox(width: 100));
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: tickerItems,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading || _roomSettings == null || _location == null || _theme == null) {
+    if (_isLoading || _roomSettings == null || _location == null || _effectiveTheme == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final theme = _theme!;
+    final theme = _effectiveTheme!; 
     final backgroundColor = theme.scaffoldBackgroundColor;
 
     final minyanimColumn = _buildMinyanimColumn();
@@ -273,107 +341,56 @@ class _DisplayWindowState extends State<DisplayWindow> {
       textDirection: ui.TextDirection.rtl,
       child: Scaffold(
         backgroundColor: backgroundColor, 
-        body: Stack(
+        body: Column(
           children: [
-            Column(
-              children: [
-                _buildHeaderTitle(),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: GlassContainer(
-                            color: theme.minyanimColumnColor,
-                            borderColor: theme.borderColor,
-                            opacity: 0.2,
-                            child: minyanimColumn
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          flex: 2,
-                          child: _buildMessageLayout(),
-                        ),
-                        const SizedBox(width: 24),
-                        if (hasSidebar)
-                          Expanded(
-                            flex: 1,
-                            child: GlassContainer(
-                              color: theme.zmanimColumnColor,
-                              borderColor: theme.borderColor,
-                              opacity: 0.2,
-                              child: zmanimWidget!
-                            ),
-                          )
-                        else 
-                          const SizedBox.shrink(),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                // --- אזור תחתון: מניין קרוב + תאריך ---
-                Container(
-                  width: double.infinity,
-                  color: theme.primaryTextColor.withOpacity(0.1),
-                  padding: const EdgeInsets.symmetric(vertical: 10.0),
-                  child: Column(
-                    children: [
-                      // סטריפ המניין הבא - כעת משתמש ב-nextMinyanFontSize
-                      if (_nextMinyan != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                               Text(
-                                'המניין הבא:', 
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize * 0.9, color: theme.primaryTextColor.withOpacity(0.9))
-                              ),
-                              const SizedBox(width: 16),
-                              Text(
-                                '${_nextMinyan!.minyan.name} בשעה ${DateFormat('HH:mm').format(_nextMinyan!.dateTime)}',
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize, fontWeight: FontWeight.bold, color: theme.highlightColor),
-                              ),
-                              const SizedBox(width: 16),
-                              Text(
-                                'בעוד:',
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize * 0.9, color: theme.primaryTextColor.withOpacity(0.9)),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _nextMinyanCountdown,
-                                style: GoogleFonts.getFont(theme.secondaryFont, fontSize: theme.nextMinyanFontSize, fontWeight: FontWeight.bold, color: Colors.redAccent),
-                                textDirection: ui.TextDirection.ltr,
-                              ),
-                            ],
-                          ),
-                        )
-                      else 
-                         Text('אין מניינים קרובים', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.nextMinyanFontSize, color: theme.primaryTextColor.withOpacity(0.7))),
-
-                      const Divider(height: 1, thickness: 1),
-                      
-                      // התאריך העברי - HebcalWidget משתמש פנימית ב-dateFontSize
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Theme(
-                          data: ThemeData(
-                            textTheme: TextTheme(
-                              bodyMedium: TextStyle(color: theme.primaryTextColor),
-                            ),
-                          ),
-                          child: const HebcalWidget(),
-                        ),
+            _buildHeaderTitle(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: GlassContainer(
+                        color: theme.minyanimColumnColor,
+                        borderColor: theme.borderColor,
+                        opacity: 0.2,
+                        child: minyanimColumn
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 2,
+                      child: _buildMessageLayout(),
+                    ),
+                    const SizedBox(width: 24),
+                    if (hasSidebar)
+                      Expanded(
+                        flex: 1,
+                        child: GlassContainer(
+                          color: theme.zmanimColumnColor,
+                          borderColor: theme.borderColor,
+                          opacity: 0.2,
+                          child: zmanimWidget!
+                        ),
+                      )
+                    else 
+                      const SizedBox.shrink(),
+                  ],
                 ),
-              ],
+              ),
+            ),
+            
+            // --- אזור תחתון: Marquee (פס נגלל) ---
+            Container(
+              width: double.infinity,
+              height: theme.dateFontSize * 3.5, // קצת יותר מרווח
+              color: theme.primaryTextColor.withOpacity(0.1),
+              alignment: Alignment.center,
+              child: MarqueeWidget(
+                child: _buildTickerContent(theme),
+              ),
             ),
           ],
         ),
@@ -383,12 +400,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   Widget _buildMinyanimColumn() {
     List<Widget> minyanWidgets = [];
-    final theme = _theme!;
+    final theme = _effectiveTheme!;
     
     final Color titleColor = theme.primaryTextColor;
     final Color subTitleColor = theme.primaryTextColor.withOpacity(0.8);
     final Color timeColor = theme.accentColor; 
-    final Color highlightColor = Colors.yellowAccent.withOpacity(0.2); 
+    final Color highlightColor = theme.highlightColor.withOpacity(0.2); 
 
     final now = DateTime.now();
     final jewishCalendar = JewishCalendar.fromDateTime(now);
@@ -479,7 +496,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   Widget _buildMessagePanel(List<Message> messages) {
-    final theme = _theme!;
+    final theme = _effectiveTheme!;
     return GlassContainer(
       color: theme.messagePanelColor,
       borderColor: theme.borderColor,
@@ -547,8 +564,8 @@ class _DisplayWindowState extends State<DisplayWindow> {
           Expanded(
             flex: 1,
             child: GlassContainer(
-              color: _theme!.minyanimColumnColor,
-              borderColor: _theme!.borderColor,
+              color: _effectiveTheme!.minyanimColumnColor,
+              borderColor: _effectiveTheme!.borderColor,
               opacity: 0.2,
               child: Center(
                 child: LargeClockWidget(roomSettings: _roomSettings!),
@@ -569,7 +586,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
   }
 
   Widget _buildHeaderTitle() {
-    final theme = _theme!;
+    final theme = _effectiveTheme!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Row(
