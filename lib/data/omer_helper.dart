@@ -14,29 +14,32 @@ class OmerHelper {
     String text = "הַיּוֹם $dayStr";
     
     // קביעת הסיומת לפי הנוסח
-    // אשכנז: בָּעוֹמֶר, ספרד/ע"מ: לָעוֹמֶר
     String suffix;
     if (nusach == Nusach.ASHKENAZ) {
       suffix = "בָּעוֹמֶר";
     } else {
-      suffix = "לָעוֹמֶר";
+      suffix = "לָעוֹמֶר"; // עדות המזרח וספרד
     }
     
-    // --- לוגיקה לפי הנוסחים ---
-    
-    // ימים 1-6 (לפני שיש שבוע שלם)
+    // --- ימים 1-6 (לפני שיש שבוע שלם) ---
+    // בשבוע הראשון כולם אומרים את הסיומת מיד אחרי הימים
     if (day < 7) {
       return "$text $suffix";
     }
     
-    // יום 7 והלאה (כולל אזכור שבועות)
-    // עבור עדות המזרח: "היום שבעה ימים לעומר שהם שבוע אחד"
-    // עבור אשכנז: "היום שבעה ימים בעומר שהם שבוע אחד"
+    // --- יום 7 והלאה (כולל אזכור שבועות) ---
     
     String prefixShehem = "שֶׁהֵם";
     
-    // הרכבה סופית: ימים + לעומר/בעומר + שהם + שבועות
-    return "$text $suffix $prefixShehem $weeksStr";
+    if (nusach == Nusach.ASHKENAZ) {
+      // תיקון לנוסח אשכנז: הסיומת "בעומר" מגיעה בסוף המשפט
+      // דוגמה: "היום שמונה ימים, שהם שבוע אחד ויום אחד, בעומר"
+      return "$text $prefixShehem $weeksStr $suffix";
+    } else {
+      // עדות המזרח (ואחרים): הסיומת "לעומר" מגיעה מיד אחרי הימים
+      // דוגמה: "היום שמונה ימים לעומר, שהם שבוע אחד..."
+      return "$text $suffix $prefixShehem $weeksStr";
+    }
   }
 
   static String _getDayString(int day) {
@@ -70,6 +73,8 @@ class OmerHelper {
     }
     
     String daysRemainderStr = _getDayString(remainder);
+    
+    // הוספת ו' החיבור לשארית הימים
     daysRemainderStr = _addVav(daysRemainderStr);
     
     return "$shavuaStr $daysRemainderStr";
