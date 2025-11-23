@@ -1,6 +1,8 @@
+// lib/widgets/large_clock_widget.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui; // <--- הוספת ייבוא ישיר ומפורש
+import 'dart:ui' as ui;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +53,8 @@ class _LargeClockWidgetState extends State<LargeClockWidget> {
     final theme = Provider.of<DataProvider>(context, listen: false).theme;
     
     return Container(
+      width: double.infinity,
+      height: double.infinity, 
       decoration: BoxDecoration(
         color: theme.minyanimColumnColor,
         borderRadius: BorderRadius.circular(11),
@@ -61,16 +65,21 @@ class _LargeClockWidgetState extends State<LargeClockWidget> {
               )
             : null,
       ),
+      padding: const EdgeInsets.all(16), 
       child: Center(
-        child: Text(
-          _timeString,
-          style: GoogleFonts.getFont(
-            theme.secondaryFont,
-            fontSize: 120,
-            fontWeight: FontWeight.bold,
-            color: theme.primaryTextColor,
+        child: FittedBox( // מבטיח שהשעון לא יגלוש וינצל מקום מקסימלי
+          fit: BoxFit.contain,
+          child: Text(
+            _timeString,
+            style: GoogleFonts.getFont(
+              theme.secondaryFont,
+              fontSize: theme.largeClockFontSize, 
+              fontWeight: FontWeight.bold,
+              color: theme.primaryTextColor,
+              height: 1.1, 
+            ),
+            textDirection: ui.TextDirection.ltr,
           ),
-          textDirection: ui.TextDirection.ltr, // <--- שימוש בייבוא הישיר
         ),
       ),
     );

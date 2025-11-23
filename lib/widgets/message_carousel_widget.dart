@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart'; // הוספת הייבוא
+import 'package:synagogue_display/data/data_provider.dart'; // הוספת הייבוא
 import 'package:synagogue_display/data/models.dart';
 import 'package:path/path.dart' as p;
 
@@ -89,17 +91,23 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final theme = Provider.of<DataProvider>(context, listen: false).theme;
+
     switch (message.type) {
       case MessageType.TEXT:
         return Container(
-          color: const Color(0xFFB3E5FC), // צבע תכלת שמיים, כמו העמודות
+          color: theme.minyanimColumnColor,
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
               child: Text(
                 message.content,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.rubik(fontSize: 48, color: const Color(0xFF37474F), fontWeight: FontWeight.w500),
+                style: GoogleFonts.rubik(
+                    fontSize: theme.messageFontSize,
+                    color: theme.primaryTextColor, 
+                    fontWeight: FontWeight.w500
+                ),
               ),
             ),
           ),
@@ -108,7 +116,7 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
       case MessageType.PDF:
         final file = File(p.join(_mediaPath, message.content));
         return Container(
-          color: const Color(0xFFFFF7F7),
+          color: theme.messagePanelColor,
           child: file.existsSync()
               ? Image.file(file, fit: BoxFit.contain)
               : Center(child: Text('קובץ התמונה לא נמצא:\n${message.content}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red, fontSize: 24))),
@@ -119,6 +127,7 @@ class _MessageCarouselWidgetState extends State<MessageCarouselWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.messages.isEmpty) {
+      final theme = Provider.of<DataProvider>(context, listen: false).theme;
       return Container(
         decoration: BoxDecoration(
           color: Colors.grey[200],

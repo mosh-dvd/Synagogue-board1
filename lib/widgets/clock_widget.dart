@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui; // <--- הוספת ייבוא ישיר ומפורש
+import 'dart:ui' as ui;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -52,10 +52,10 @@ class _ClockWidgetState extends State<ClockWidget> {
       style: GoogleFonts.getFont(
         theme.secondaryFont,
         color: theme.primaryTextColor, 
-        fontSize: 24, 
+        fontSize: theme.clockFontSize, 
         fontWeight: FontWeight.w500
       ),
-      textDirection: ui.TextDirection.ltr, // <--- שימוש בייבוא הישיר
+      textDirection: ui.TextDirection.ltr,
     );
   }
 }

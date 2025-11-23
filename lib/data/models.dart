@@ -212,6 +212,15 @@ class DisplayTheme {
   final String primaryFont;
   final String secondaryFont;
   final double borderWidth;
+  
+  // --- שדות גודל טקסט חדשים ---
+  final double titleFontSize;      // כותרת עליונה
+  final double clockFontSize;      // שעון קטן
+  final double largeClockFontSize; // שעון גדול
+  final double sectionTitleFontSize; // כותרות משנה (זמני היום, סוג תפילה)
+  final double bodyFontSize;       // טקסט רגיל (שורות מניינים)
+  final double messageFontSize;    // טקסט הודעות
+  final double dateFontSize;       // תאריך למטה
 
   DisplayTheme({
     this.id = 1,
@@ -226,6 +235,14 @@ class DisplayTheme {
     required this.primaryFont,
     required this.secondaryFont,
     required this.borderWidth,
+    // ברירות מחדל
+    this.titleFontSize = 42.0,
+    this.clockFontSize = 24.0,
+    this.largeClockFontSize = 120.0,
+    this.sectionTitleFontSize = 28.0,
+    this.bodyFontSize = 24.0,
+    this.messageFontSize = 48.0,
+    this.dateFontSize = 32.0,
   });
 
   factory DisplayTheme.defaultTheme() {
@@ -241,6 +258,14 @@ class DisplayTheme {
       primaryFont: 'Rubik',
       secondaryFont: 'Tinos',
       borderWidth: 3.0,
+      // גדלים
+      titleFontSize: 42.0,
+      clockFontSize: 24.0,
+      largeClockFontSize: 120.0,
+      sectionTitleFontSize: 28.0,
+      bodyFontSize: 24.0,
+      messageFontSize: 48.0,
+      dateFontSize: 32.0,
     );
   }
 
@@ -258,6 +283,14 @@ class DisplayTheme {
       'primaryFont': primaryFont,
       'secondaryFont': secondaryFont,
       'borderWidth': borderWidth,
+      // גדלים
+      'titleFontSize': titleFontSize,
+      'clockFontSize': clockFontSize,
+      'largeClockFontSize': largeClockFontSize,
+      'sectionTitleFontSize': sectionTitleFontSize,
+      'bodyFontSize': bodyFontSize,
+      'messageFontSize': messageFontSize,
+      'dateFontSize': dateFontSize,
     };
   }
 
@@ -276,6 +309,14 @@ class DisplayTheme {
       primaryFont: map['primaryFont'] ?? defaultT.primaryFont,
       secondaryFont: map['secondaryFont'] ?? defaultT.secondaryFont,
       borderWidth: map['borderWidth'] ?? defaultT.borderWidth,
+      // גדלים (עם הגנה מפני Null במידה והשדרוג לא עבר חלק)
+      titleFontSize: map['titleFontSize'] ?? defaultT.titleFontSize,
+      clockFontSize: map['clockFontSize'] ?? defaultT.clockFontSize,
+      largeClockFontSize: map['largeClockFontSize'] ?? defaultT.largeClockFontSize,
+      sectionTitleFontSize: map['sectionTitleFontSize'] ?? defaultT.sectionTitleFontSize,
+      bodyFontSize: map['bodyFontSize'] ?? defaultT.bodyFontSize,
+      messageFontSize: map['messageFontSize'] ?? defaultT.messageFontSize,
+      dateFontSize: map['dateFontSize'] ?? defaultT.dateFontSize,
     );
   }
 }

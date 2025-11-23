@@ -24,42 +24,33 @@ class HebcalWidget extends StatelessWidget {
       case 9: return 'כסלו';
       case 10: return 'טבת';
       case 11: return 'שבט';
-      case 12:
-        return jd.isJewishLeapYear() ? 'אדר א׳' : 'אדר';
-      case 13:
-        return 'אדר ב׳';
-      default:
-        return '';
-    }
-  }
-
-  String _getDayOfWeekName(int day) {
-    switch (day) {
-      case 1: return 'יום ראשון';
-      case 2: return 'יום שני';
-      case 3: return 'יום שלישי';
-      case 4: return 'יום רביעי';
-      case 5: return 'יום חמישי';
-      case 6: return 'יום שישי';
-      case 7: return 'שבת קודש';
+      case 12: return jd.isJewishLeapYear() ? 'אדר א׳' : 'אדר';
+      case 13: return 'אדר ב׳';
       default: return '';
     }
   }
 
-  String _getNextDayLeilName(int currentDay) {
-    int nextDay = (currentDay % 7) + 1;
-    switch (nextDay) {
-      case 1: return 'ליל ראשון';
-      case 2: return 'ליל שני';
-      case 3: return 'ליל שלישי';
-      case 4: return 'ליל רביעי';
-      case 5: return 'ליל חמישי';
-      case 6: return 'ליל שישי';
-      case 7: return 'ליל שבת קודש';
-      default: return '';
+  String _getDayName(int weekday, bool isNight) {
+    String dayStr;
+    switch (weekday) {
+      case 7: dayStr = 'ראשון'; break;
+      case 1: dayStr = 'שני'; break;
+      case 2: dayStr = 'שלישי'; break;
+      case 3: dayStr = 'רביעי'; break;
+      case 4: dayStr = 'חמישי'; break;
+      case 5: dayStr = 'שישי'; break;
+      case 6: dayStr = 'שבת קודש'; break;
+      default: dayStr = '';
+    }
+
+    if (isNight) {
+      return 'ליל $dayStr';
+    } else {
+      if (weekday == 6) return 'יום שבת קודש';
+      return 'יום $dayStr';
     }
   }
-  
+
   String toGematria(int number) {
     if (number <= 0) return '';
     if (number >= 1000) return number.toString();
@@ -85,6 +76,62 @@ class HebcalWidget extends StatelessWidget {
     return str;
   }
 
+  List<String> _getTefillaAlerts(JewishCalendar jd) {
+    List<String> alerts = [];
+    int yomTovIndex = jd.getYomTovIndex();
+
+    if (jd.isRoshChodesh() || jd.isCholHamoed() || jd.isYomTov()) {
+      alerts.add("יעלה ויבוא");
+    } else if (jd.isChanukah()) {
+       alerts.add("על הניסים");
+    } else if (yomTovIndex == JewishCalendar.PURIM || yomTovIndex == JewishCalendar.SHUSHAN_PURIM) {
+       alerts.add("על הניסים");
+    }
+
+    int month = jd.getJewishMonth();
+    int day = jd.getJewishDayOfMonth();
+    
+    bool isSummer = false;
+    
+    if (month == 1) { 
+       if (day >= 1) isSummer = true; 
+    } else if (month > 1 && month < 7) {
+       isSummer = true; 
+    } else if (month == 7) { 
+       if (day < 22) isSummer = true; 
+    }
+
+    if (isSummer) {
+       alerts.add("מוריד הטל");
+    } else {
+       alerts.add("משיב הרוח ומוריד הגשם");
+    }
+
+    bool askForRain = false;
+    if (month == 8) { 
+       if (day >= 7) askForRain = true;
+    } else if (month > 8 || month < 1) { 
+       askForRain = true;
+    } else if (month == 1) { 
+       askForRain = false; 
+    }
+    
+    if (askForRain) {
+      alerts.add("ותן טל ומטר");
+    }
+
+    int omer = jd.getDayOfOmer();
+    if (omer != -1) {
+      alerts.add("ספירת העומר: $omer");
+    }
+    
+    if (yomTovIndex == JewishCalendar.TISHA_BEAV) {
+      alerts.add("עננו");
+    }
+
+    return alerts;
+  }
+
   @override
   Widget build(BuildContext context) {
     final dataProvider = Provider.of<DataProvider>(context);
@@ -92,13 +139,11 @@ class HebcalWidget extends StatelessWidget {
     final location = dataProvider.location;
     final theme = dataProvider.theme;
 
-    // חישוב זמנים לקביעת יום/לילה
     final zmanim = ZmanimHelper.getZmanimDateTimes(location, date: simulationDate);
     final sunset = zmanim[RelativeZman.sunset];
     
     bool isNightTime = false;
     
-    // הלוגיקה החדשה: 20 דקות אחרי השקיעה = לילה
     if (sunset != null) {
       final switchTime = sunset.add(const Duration(minutes: 20));
       if (simulationDate.isAfter(switchTime)) {
@@ -106,37 +151,62 @@ class HebcalWidget extends StatelessWidget {
       }
     }
     
-    // אם לילה, מקדמים את התאריך העברי ליום הבא
     DateTime jewishCalcDate = simulationDate;
     if (isNightTime) {
       jewishCalcDate = simulationDate.add(const Duration(days: 1));
     }
     
-    final jewishDate = JewishDate.fromDateTime(jewishCalcDate);
+    final jewishCalendar = JewishCalendar.fromDateTime(jewishCalcDate);
+    jewishCalendar.inIsrael = true; 
 
-    // קביעת הטקסט "יום X" או "ליל X"
-    String dayName;
-    if (isNightTime) {
-       // משתמשים ביום הנוכחי (לפני הקידום) כדי לקבל את "ליל [היום הבא]"
-       dayName = _getNextDayLeilName(simulationDate.weekday);
-    } else {
-       dayName = _getDayOfWeekName(simulationDate.weekday);
-    }
+    String dayNameText = _getDayName(jewishCalcDate.weekday, isNightTime);
 
-    final day = toGematria(jewishDate.getJewishDayOfMonth());
-    final month = _getMonthName(jewishDate);
-    final year = toGematria(jewishDate.getJewishYear() % 1000);
+    final day = toGematria(jewishCalendar.getJewishDayOfMonth());
+    final month = _getMonthName(jewishCalendar);
+    final year = toGematria(jewishCalendar.getJewishYear() % 1000);
 
-    final fullDateString = '$dayName, $day $month $year';
+    final fullDateString = '$dayNameText, $day $month $year';
+    
+    final alerts = _getTefillaAlerts(jewishCalendar);
 
-    return Text(
-      fullDateString,
-      style: GoogleFonts.getFont(
-        theme.primaryFont,
-        color: theme.primaryTextColor, 
-        fontSize: 32, 
-        fontWeight: FontWeight.bold
-      ),
+    return Column(
+      children: [
+        Text(
+          fullDateString,
+          style: GoogleFonts.getFont(
+            theme.primaryFont,
+            color: theme.primaryTextColor, 
+            fontSize: theme.dateFontSize, 
+            fontWeight: FontWeight.bold
+          ),
+          textAlign: TextAlign.center,
+        ),
+        if (alerts.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: alerts.map((alert) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 6.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                decoration: BoxDecoration(
+                  color: theme.highlightColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.highlightColor, width: 1),
+                ),
+                child: Text(
+                  alert,
+                  style: GoogleFonts.getFont(
+                    theme.secondaryFont,
+                    color: theme.primaryTextColor,
+                    fontSize: theme.dateFontSize * 0.7,
+                    fontWeight: FontWeight.bold
+                  ),
+                ),
+              )).toList(),
+            ),
+          ),
+      ],
     );
   }
 }

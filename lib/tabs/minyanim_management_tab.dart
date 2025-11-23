@@ -1,3 +1,5 @@
+// lib/tabs/minyanim_management_tab.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:synagogue_display/data/data_provider.dart';
@@ -25,6 +27,77 @@ class MinyanimManagementTab extends StatelessWidget {
       case MinyanScheduleType.MOTZEI_SHABBAT: return 'מוצ"ש';
       case MinyanScheduleType.EREV_SHABBAT: return 'ערב שבת/חג (מנחה/ערבית)';
     }
+  }
+
+  // --- דיאלוג חדש לשכפול מניינים ---
+  Future<void> _showDuplicateDialog(BuildContext context) async {
+    MinyanScheduleType? source;
+    MinyanScheduleType? target;
+    
+    return showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('שכפול מניינים'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('פעולה זו תעתיק את כל המניינים מהסוג הנבחר לסוג היעד.', style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<MinyanScheduleType>(
+                decoration: const InputDecoration(labelText: 'העתק מ...'),
+                value: source,
+                items: MinyanScheduleType.values.map((t) => DropdownMenuItem(value: t, child: Text(_getScheduleTypeName(t)))).toList(),
+                onChanged: (v) => setState(() => source = v),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<MinyanScheduleType>(
+                decoration: const InputDecoration(labelText: 'אל...'),
+                value: target,
+                items: MinyanScheduleType.values.map((t) => DropdownMenuItem(value: t, child: Text(_getScheduleTypeName(t)))).toList(),
+                onChanged: (v) => setState(() => target = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(child: const Text('ביטול'), onPressed: () => Navigator.of(ctx).pop()),
+            ElevatedButton(
+              child: const Text('בצע שכפול'),
+              onPressed: (source == null || target == null || source == target) 
+                ? null 
+                : () async {
+                    // ביצוע השכפול
+                    final db = DatabaseHelper();
+                    final allMinyanim = await db.getMinyanim();
+                    final sourceMinyanim = allMinyanim.where((m) => m.scheduleType == source).toList();
+                    
+                    int count = 0;
+                    for (var m in sourceMinyanim) {
+                      // יצירת עותק חדש (ID null כדי שייווצר חדש)
+                      final newMinyan = Minyan(
+                        name: m.name,
+                        roomId: m.roomId,
+                        scheduleType: target!, // הסוג החדש
+                        timeType: m.timeType,
+                        time: m.time,
+                        relativeZman: m.relativeZman,
+                        relativeOffsetMinutes: m.relativeOffsetMinutes
+                      );
+                      await db.insertMinyan(newMinyan);
+                      count++;
+                    }
+                    
+                    if (context.mounted) {
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('שוכפלו בהצלחה $count מניינים')));
+                        Provider.of<DataProvider>(context, listen: false).fetchAllData();
+                    }
+                },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showAddOrEditMinyanDialog(BuildContext context, List<Room> rooms, [Minyan? minyanToEdit]) async {
@@ -87,8 +160,6 @@ class MinyanimManagementTab extends StatelessWidget {
                 if (formKey.currentState!.validate()) {
                   final newMinyan = Minyan( id: minyanToEdit?.id, name: nameController.text, roomId: selectedRoom!.id!, scheduleType: selectedScheduleType, timeType: selectedTimeType, time: selectedTimeType == MinyanTimeType.FIXED ? timeController.text : null, relativeZman: selectedTimeType == MinyanTimeType.RELATIVE ? selectedRelativeZman : null, relativeOffsetMinutes: selectedTimeType == MinyanTimeType.RELATIVE ? int.parse(offsetController.text) : null, );
                   
-                  // הפונקציה insertMinyan ב-DatabaseHelper משתמשת ב-ConflictAlgorithm.replace
-                  // לכן היא תעדכן אם ה-ID קיים, ותוסיף חדש אם לא.
                   await DatabaseHelper().insertMinyan(newMinyan);
                   
                   Provider.of<DataProvider>(context, listen: false).fetchAllData();
@@ -145,6 +216,13 @@ class MinyanimManagementTab extends StatelessWidget {
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             elevation: 1,
             actions: [
+              // --- כפתור השכפול החדש ---
+              TextButton.icon(
+                icon: const Icon(Icons.copy_all),
+                label: const Text('שכפול'),
+                onPressed: () => _showDuplicateDialog(context),
+              ),
+              const SizedBox(width: 8),
               TextButton.icon(
                 icon: const Icon(Icons.file_upload_outlined),
                 label: const Text('ייבוא'),

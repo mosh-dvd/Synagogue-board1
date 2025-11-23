@@ -1,7 +1,7 @@
 // lib/widgets/zmanim_widget.dart
 
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui; // <--- הוספת הייבוא החסר
+import 'dart:ui' as ui;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -25,10 +25,8 @@ class ZmanimWidget extends StatelessWidget {
     final simulationDate = dataProvider.simulationDate;
     final theme = dataProvider.theme;
 
-    // משתמשים ב-getZmanimDateTimes המלא כדי לקבל אובייקטים של זמן להשוואה
     final rawTimes = ZmanimHelper.getZmanimDateTimes(location, date: simulationDate);
     
-    // ממירים לרשימה למיון ותצוגה
     final List<MapEntry<String, DateTime>> sortedTimes = [];
     rawTimes.forEach((key, value) {
       if (value != null && ZmanimHelper.zmanimDisplayNames.containsKey(key)) {
@@ -36,16 +34,14 @@ class ZmanimWidget extends StatelessWidget {
       }
     });
     
-    // מיון לפי זמן
     sortedTimes.sort((a, b) => a.value.compareTo(b.value));
 
-    // מציאת הזמן הבא (הראשון שגדול מעכשיו)
     final now = DateTime.now();
     String? nextZmanKey;
     for (var entry in sortedTimes) {
       if (entry.value.isAfter(now)) {
         nextZmanKey = entry.key;
-        break; // מצאנו את הראשון
+        break;
       }
     }
 
@@ -66,7 +62,7 @@ class ZmanimWidget extends StatelessWidget {
               'זמני היום',
               style: GoogleFonts.getFont(
                 theme.primaryFont,
-                fontSize: 28,
+                fontSize: theme.sectionTitleFontSize,
                 fontWeight: FontWeight.w500, 
                 color: textColor,
               ),
@@ -92,7 +88,7 @@ class ZmanimWidget extends StatelessWidget {
                         entry.key,
                         style: GoogleFonts.getFont(
                           theme.primaryFont,
-                          fontSize: 22,
+                          fontSize: theme.bodyFontSize,
                           color: isNext ? highlightColor : textColor.withOpacity(0.9),
                           fontWeight: isNext ? FontWeight.bold : FontWeight.normal,
                         ),
@@ -101,11 +97,11 @@ class ZmanimWidget extends StatelessWidget {
                         DateFormat('HH:mm').format(entry.value),
                         style: GoogleFonts.getFont(
                           theme.secondaryFont,
-                          fontSize: 24,
+                          fontSize: theme.bodyFontSize + 2,
                           fontWeight: FontWeight.bold,
                           color: isNext ? highlightColor : accentColor,
                         ),
-                        textDirection: ui.TextDirection.ltr, // <--- שימוש ב-ui.TextDirection
+                        textDirection: ui.TextDirection.ltr,
                       ),
                     ],
                   ),

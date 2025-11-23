@@ -12,7 +12,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 16,
+      version: 17, // Changed version to 17
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: false,
@@ -73,7 +73,14 @@ class DatabaseHelper {
         highlightColor INTEGER,
         primaryFont TEXT,
         secondaryFont TEXT,
-        borderWidth REAL
+        borderWidth REAL,
+        titleFontSize REAL DEFAULT 42.0,
+        clockFontSize REAL DEFAULT 24.0,
+        largeClockFontSize REAL DEFAULT 120.0,
+        sectionTitleFontSize REAL DEFAULT 28.0,
+        bodyFontSize REAL DEFAULT 24.0,
+        messageFontSize REAL DEFAULT 48.0,
+        dateFontSize REAL DEFAULT 32.0
       )
     ''');
   }
@@ -110,6 +117,15 @@ class DatabaseHelper {
     }
     if (oldVersion < 16) {
       await db.execute('ALTER TABLE theme ADD COLUMN highlightColor INTEGER');
+    }
+    if (oldVersion < 17) {
+      await db.execute('ALTER TABLE theme ADD COLUMN titleFontSize REAL DEFAULT 42.0');
+      await db.execute('ALTER TABLE theme ADD COLUMN clockFontSize REAL DEFAULT 24.0');
+      await db.execute('ALTER TABLE theme ADD COLUMN largeClockFontSize REAL DEFAULT 120.0');
+      await db.execute('ALTER TABLE theme ADD COLUMN sectionTitleFontSize REAL DEFAULT 28.0');
+      await db.execute('ALTER TABLE theme ADD COLUMN bodyFontSize REAL DEFAULT 24.0');
+      await db.execute('ALTER TABLE theme ADD COLUMN messageFontSize REAL DEFAULT 48.0');
+      await db.execute('ALTER TABLE theme ADD COLUMN dateFontSize REAL DEFAULT 32.0');
     }
   }
 

@@ -316,7 +316,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
                   ),
                 ),
                 
-                // --- אזור חדש: מניין קרוב + תאריך בתחתית ---
+                // --- אזור תחתון: מניין קרוב + תאריך ---
                 Container(
                   width: double.infinity,
                   color: theme.primaryTextColor.withOpacity(0.1),
@@ -332,29 +332,29 @@ class _DisplayWindowState extends State<DisplayWindow> {
                             children: [
                                Text(
                                 'המניין הבא:', 
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 26, color: theme.primaryTextColor.withOpacity(0.9))
+                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.8, color: theme.primaryTextColor.withOpacity(0.9))
                               ),
                               const SizedBox(width: 16),
                               Text(
                                 '${_nextMinyan!.minyan.name} בשעה ${DateFormat('HH:mm').format(_nextMinyan!.dateTime)}',
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 28, fontWeight: FontWeight.bold, color: theme.highlightColor),
+                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.9, fontWeight: FontWeight.bold, color: theme.highlightColor),
                               ),
                               const SizedBox(width: 16),
                               Text(
                                 'בעוד:',
-                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: theme.primaryTextColor.withOpacity(0.9)),
+                                style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.8, color: theme.primaryTextColor.withOpacity(0.9)),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 _nextMinyanCountdown,
-                                style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 28, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                                style: GoogleFonts.getFont(theme.secondaryFont, fontSize: theme.dateFontSize * 0.9, fontWeight: FontWeight.bold, color: Colors.redAccent),
                                 textDirection: ui.TextDirection.ltr,
                               ),
                             ],
                           ),
                         )
                       else 
-                         Text('אין מניינים קרובים', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: theme.primaryTextColor.withOpacity(0.7))),
+                         Text('אין מניינים קרובים', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.dateFontSize * 0.8, color: theme.primaryTextColor.withOpacity(0.7))),
 
                       const Divider(height: 1, thickness: 1),
                       
@@ -388,7 +388,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final Color titleColor = theme.primaryTextColor;
     final Color subTitleColor = theme.primaryTextColor.withOpacity(0.8);
     final Color timeColor = theme.accentColor; 
-    final Color highlightColor = Colors.yellowAccent.withOpacity(0.2); // צבע רקע להדגשה
+    final Color highlightColor = Colors.yellowAccent.withOpacity(0.2); 
 
     final now = DateTime.now();
     final jewishCalendar = JewishCalendar.fromDateTime(now);
@@ -412,7 +412,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
             title = 'מנייני השבוע';
         }
         
-        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 28, fontWeight: FontWeight.w300, color: titleColor), textAlign: TextAlign.center, ), ), );
+        minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 20, 16, 8), child: Text( title, style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.sectionTitleFontSize, fontWeight: FontWeight.w300, color: titleColor), textAlign: TextAlign.center, ), ), );
         minyanWidgets.add(Divider(color: titleColor.withOpacity(0.3), indent: 40, endIndent: 40, thickness: 1));
         
         final prayerGroups = _groupedMinyanim[type]!.entries.toList();
@@ -433,10 +433,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
           final prayerName = prayerGroups[i].key;
           final minyanList = prayerGroups[i].value;
 
-          minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, fontWeight: FontWeight.w500, color: subTitleColor), textAlign: TextAlign.center, ), ), );
+          minyanWidgets.add( Padding( padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text( prayerName, style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.sectionTitleFontSize * 0.85, fontWeight: FontWeight.w500, color: subTitleColor), textAlign: TextAlign.center, ), ), );
           
           for (var minyan in minyanList) {
-            // בדיקה האם זה המניין הבא (לצורך הדגשה)
             bool isNext = _nextMinyan?.minyan.id == minyan.id;
 
             Widget minyanRow = Padding( 
@@ -444,13 +443,12 @@ class _DisplayWindowState extends State<DisplayWindow> {
               child: Row( 
                 mainAxisAlignment: MainAxisAlignment.spaceBetween, 
                 children: [ 
-                  Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 20, color: isNext ? theme.highlightColor : subTitleColor.withOpacity(0.7)), textAlign: TextAlign.right, ), 
-                  Text( minyan.time ?? '--:--', style: GoogleFonts.getFont(theme.secondaryFont, fontSize: 32, fontWeight: FontWeight.bold, color: isNext ? theme.highlightColor : timeColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), 
+                  Text( minyan.roomName ?? 'חדר לא ידוע', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.bodyFontSize * 0.9, color: isNext ? theme.highlightColor : subTitleColor.withOpacity(0.7)), textAlign: TextAlign.right, ), 
+                  Text( minyan.time ?? '--:--', style: GoogleFonts.getFont(theme.secondaryFont, fontSize: theme.bodyFontSize * 1.3, fontWeight: FontWeight.bold, color: isNext ? theme.highlightColor : timeColor), textAlign: TextAlign.left, textDirection: ui.TextDirection.ltr, ), 
                 ], 
               ), 
             );
 
-            // אם זה המניין הבא, נוסיף לו רקע מודגש
             if (isNext) {
                minyanWidgets.add(Container(
                  decoration: BoxDecoration(
@@ -473,7 +471,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
     }
     
     return _groupedMinyanim.isEmpty 
-      ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 24, color: subTitleColor))) 
+      ? Center(child: Text('אין מניינים להיום', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.bodyFontSize, color: subTitleColor))) 
       : AutoScrollingListView(
           padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
           children: minyanWidgets,
@@ -487,7 +485,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
       borderColor: theme.borderColor,
       opacity: 0.5,
       child: messages.isEmpty
-          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.getFont(theme.primaryFont, fontSize: 18, color: theme.primaryTextColor.withOpacity(0.5))))
+          ? Center(child: Text('אין הודעות לחלונית זו', style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.bodyFontSize, color: theme.primaryTextColor.withOpacity(0.5))))
           : MessageCarouselWidget(messages: messages),
     );
   }
@@ -592,7 +590,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
             
           GradientText(
             widget.title,
-            style: GoogleFonts.getFont(theme.primaryFont, fontSize: 42, fontWeight: FontWeight.w300),
+            style: GoogleFonts.getFont(theme.primaryFont, fontSize: theme.titleFontSize, fontWeight: FontWeight.w300),
             gradient: LinearGradient(
               colors: [
                 theme.highlightColor, 
