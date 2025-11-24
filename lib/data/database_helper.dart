@@ -12,7 +12,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'synagogue.db');
     _database = await openDatabase(
       path,
-      version: 20, // שודרג ל-20
+      version: 21, // עדכון גרסה
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: false,
@@ -42,12 +42,16 @@ class DatabaseHelper {
       )
     ''');
     
-    // הוספת הטבלה החדשה גם ביצירה מאפס
+    // יצירת הטבלה המעודכנת
     await db.execute('''
       CREATE TABLE special_schedules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        date TEXT NOT NULL
+        date TEXT,
+        is_hebrew INTEGER DEFAULT 0,
+        is_recurring INTEGER DEFAULT 0,
+        hebrew_day INTEGER,
+        hebrew_month INTEGER
       )
     ''');
 
@@ -69,7 +73,7 @@ class DatabaseHelper {
     
     await db.execute('''CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)''');
     await db.insert('settings', {'key': 'location', 'value': 'ירושלים'});
-    await db.insert('settings', {'key': 'nusach', 'value': 'EDOT_HAMIZRACH'}); // ברירת מחדל
+    await db.insert('settings', {'key': 'nusach', 'value': 'EDOT_HAMIZRACH'});
 
     await db.execute('''CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, content TEXT NOT NULL, duration INTEGER NOT NULL DEFAULT 10, display_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, panel_index INTEGER NOT NULL DEFAULT 1)''');
     await db.execute('''CREATE TABLE message_room_link (message_id INTEGER, room_id INTEGER, PRIMARY KEY (message_id, room_id), FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE, FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE)''');
@@ -150,7 +154,6 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE rooms ADD COLUMN font_scale REAL NOT NULL DEFAULT 1.0');
     }
     
-    // --- שדרוג לגרסה 20 ---
     if (oldVersion < 20) {
       await db.execute('''
         CREATE TABLE special_schedules (
@@ -162,9 +165,23 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE minyanim ADD COLUMN special_schedule_id INTEGER REFERENCES special_schedules(id) ON DELETE CASCADE');
       await db.insert('settings', {'key': 'nusach', 'value': 'EDOT_HAMIZRACH'}, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
+
+    // --- שדרוג לגרסה 21 (תמיכה בתאריכים עבריים) ---
+    if (oldVersion < 21) {
+      // מכיוון ש-SQLite לא תומך בשינוי סוגי עמודות בקלות, נוסיף עמודות ונתיר NULL ב-date
+      // במקום למחוק וליצור מחדש, פשוט נוסיף עמודות חדשות
+      await db.execute('ALTER TABLE special_schedules ADD COLUMN is_hebrew INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE special_schedules ADD COLUMN is_recurring INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE special_schedules ADD COLUMN hebrew_day INTEGER');
+      await db.execute('ALTER TABLE special_schedules ADD COLUMN hebrew_month INTEGER');
+      
+      // אין צורך לשנות את ה-date ל-NULLABLE כי בסכמה הישנה הוא היה TEXT NOT NULL,
+      // אבל בקוד החדש נשתמש בו רק אם is_hebrew=0. 
+      // אם יצרת טבלה חדשה היא תומכת ב-NULL (לא שמתי NOT NULL). 
+      // אם שדרגת, ה-date עדיין מחייב ערך, אז נשים ערך פיקטיבי במקרה של תאריך עברי.
+    }
   }
 
-  // ... (getSetting, updateSetting, deleteSetting נשארים ללא שינוי)
   Future<String?> getSetting(String key) async {
     final db = await database;
     final maps = await db.query('settings', where: 'key = ?', whereArgs: [key]);
@@ -181,7 +198,6 @@ class DatabaseHelper {
     await db.delete('settings', where: 'key = ?', whereArgs: [key]);
   }
 
-  // ... (insertRoom, updateRoom, getRooms, deleteRoom נשארים ללא שינוי)
   Future<void> insertRoom(Room room) async {
     final db = await database;
     await db.insert('rooms', room.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -207,7 +223,7 @@ class DatabaseHelper {
   // --- ניהול ימים מיוחדים ---
   Future<List<SpecialSchedule>> getSpecialSchedules() async {
     final db = await database;
-    final maps = await db.query('special_schedules', orderBy: 'date ASC');
+    final maps = await db.query('special_schedules', orderBy: 'name ASC'); // מיון לפי שם כי התאריך יכול להיות מורכב
     return List.generate(maps.length, (i) => SpecialSchedule.fromMap(maps[i]));
   }
 
@@ -221,12 +237,10 @@ class DatabaseHelper {
     final db = await database;
     await db.transaction((txn) async {
       await txn.delete('special_schedules', where: 'id = ?', whereArgs: [id]);
-      // מחיקת כל המניינים שקשורים ליום הזה
       await txn.delete('minyanim', where: 'special_schedule_id = ?', whereArgs: [id]);
     });
   }
 
-  // ... (minyanim functions)
   Future<void> insertMinyan(Minyan minyan) async {
     final db = await database;
     await db.insert('minyanim', minyan.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -258,7 +272,6 @@ class DatabaseHelper {
     });
   }
 
-  // ... (messages and themes functions remain unchanged)
   Future<int> insertMessage(Message message) async {
     final db = await database;
     return await db.insert('messages', message.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);

@@ -1,3 +1,5 @@
+// lib/admin_window.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -9,6 +11,7 @@ import 'package:synagogue_display/tabs/rooms_management_tab.dart';
 import 'package:synagogue_display/tabs/messages_management_tab.dart';
 import 'package:synagogue_display/dialogs/global_settings_dialog.dart';
 import 'package:synagogue_display/dialogs/theme_settings_dialog.dart';
+import 'package:synagogue_display/dialogs/schedule_timing_dialog.dart'; // ייבוא חדש
 
 class AdminWindow extends StatefulWidget {
   const AdminWindow({Key? key}) : super(key: key);
@@ -55,6 +58,10 @@ class _AdminWindowState extends State<AdminWindow> {
         'message_links': dataProvider.messageLinks,
         'location': dataProvider.location,
         'theme': dataProvider.theme.toMap(),
+        // העברת הגדרות הזמנים לחלונות התצוגה
+        'switch_erev': dataProvider.switchErev.toMap(),
+        'switch_shabbat': dataProvider.switchShabbat.toMap(),
+        'switch_motzaei': dataProvider.switchMotzaei.toMap(),
       });
       
       final windowIds = await DesktopMultiWindow.getAllSubWindowIds();
@@ -104,6 +111,14 @@ class _AdminWindowState extends State<AdminWindow> {
       builder: (context) => const ThemeSettingsDialog(),
     );
   }
+  
+  // פונקציה חדשה
+  void _showScheduleTimingSettings(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ScheduleTimingDialog(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +130,11 @@ class _AdminWindowState extends State<AdminWindow> {
           appBar: AppBar(
             title: const Text('ממשק ניהול'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.access_time), // אייקון שעון להגדרות זמנים
+                tooltip: 'הגדרת זמני מעבר לוחות',
+                onPressed: () => _showScheduleTimingSettings(context),
+              ),
               IconButton(
                 icon: const Icon(Icons.color_lens_outlined),
                 tooltip: 'הגדרות עיצוב',

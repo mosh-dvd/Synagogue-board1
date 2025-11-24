@@ -23,7 +23,6 @@ import 'package:synagogue_display/widgets/gradient_text.dart';
 import 'package:synagogue_display/widgets/glass_container.dart';
 import 'package:synagogue_display/widgets/marquee_widget.dart';
 
-// הרחבה כדי למצוא יום מיוחד
 extension FirstWhereExt<T> on List<T> {
   T? firstWhereOrNull(bool Function(T) test) {
     for (var element in this) {
@@ -54,10 +53,7 @@ class _DisplayWindowState extends State<DisplayWindow> {
   DisplayTheme? _rawTheme;
   DisplayTheme? _effectiveTheme;
   
-  // מפה המכילה את המניינים. אם יום מיוחד - המפתח יהיה SPECIAL_DATE, אחרת לפי סוגים רגילים.
   Map<MinyanScheduleType, Map<String, List<Minyan>>> _groupedMinyanim = {};
-  
-  // שם היום המיוחד אם יש (להצגה בכותרת)
   String? _specialDayName;
 
   Map<int, List<Message>> _panelMessages = {};
@@ -67,6 +63,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
   MinyanWithTime? _nextMinyan;
   Timer? _nextMinyanTimer;
   String _nextMinyanCountdown = "";
+  
+  // הגדרות מעבר
+  ScheduleSwitchConfig? _switchErev;
+  ScheduleSwitchConfig? _switchShabbat;
+  ScheduleSwitchConfig? _switchMotzaei;
 
   @override
   void initState() {
@@ -99,16 +100,10 @@ class _DisplayWindowState extends State<DisplayWindow> {
             'message_links': dataProvider.messageLinks,
             'location': dataProvider.location,
             'theme': dataProvider.theme.toMap(),
-            // יש להוסיף את הלוחות המיוחדים לפיילוד גם אם הם לא שם כרגע, אבל
-            // מכיוון שאנחנו בתוך ה-App באותו פרוסס (במקרה של פיתוח) או מקבלים נתונים, 
-            // הכי טוב שהנתונים יגיעו מה-DataProvider ישירות אם זה החלון הראשי, או מהפיילוד.
-            // כדי לפשט, נניח שה-DataProvider זמין גם בחלון זה (אם זה אותו Isolate)
-            // אך ב-MultiWindow זה Isolate נפרד. לכן צריך להעביר גם את ה-SpecialSchedules בפיילוד.
-            // כאן אני משתמש ב-DataProvider מקומי כי זה הדגמה, אך בייצור הפיילוד ב-admin_window צריך לכלול special_schedules.
+            'switch_erev': dataProvider.switchErev.toMap(),
+            'switch_shabbat': dataProvider.switchShabbat.toMap(),
+            'switch_motzaei': dataProvider.switchMotzaei.toMap(),
           };
-          
-          // תיקון: אם זה חלון נפרד, הוא צריך לקבל את המידע. הוספתי לוגיקה שתמשוך מה-DB אם צריך, 
-          // אבל לצורך התצוגה נסתמך על מה שיש.
           _processPayload(initialData); 
         }
       });
@@ -140,6 +135,14 @@ class _DisplayWindowState extends State<DisplayWindow> {
       nextMinyanFontSize: base.nextMinyanFontSize * scale,
     );
   }
+  
+  // פונקציית עזר לבדיקה אם הגיע הזמן
+  bool _isAfterTrigger(DateTime now, ScheduleSwitchConfig config, Map<RelativeZman, DateTime?> zmanim) {
+    final baseTime = zmanim[config.baseZman];
+    if (baseTime == null) return false; // אם אין זמן, לא עוברים
+    final triggerTime = baseTime.add(Duration(minutes: config.offsetMinutes));
+    return now.isAfter(triggerTime);
+  }
 
   Future<void> _processPayload(Map<String, dynamic> data) async {
     if (!mounted) return;
@@ -151,8 +154,11 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final location = data['location'] as String;
     final theme = DisplayTheme.fromMap(data['theme']);
     
-    // שליפת הלוחות המיוחדים מה-DB ישירות כי זה אמין יותר בחלון נפרד
-    // (בפרודקשן כדאי להעביר בפיילוד)
+    // קריאת הגדרות המעבר מהפיילוד
+    final switchErev = data['switch_erev'] != null ? ScheduleSwitchConfig.fromMap(data['switch_erev']) : ScheduleSwitchConfig.defaultErev();
+    final switchShabbat = data['switch_shabbat'] != null ? ScheduleSwitchConfig.fromMap(data['switch_shabbat']) : ScheduleSwitchConfig.defaultShabbat();
+    final switchMotzaei = data['switch_motzaei'] != null ? ScheduleSwitchConfig.fromMap(data['switch_motzaei']) : ScheduleSwitchConfig.defaultMotzaei();
+    
     final dataProvider = Provider.of<DataProvider>(context, listen: false);
     await dataProvider.fetchAllData(); 
     final specialSchedules = dataProvider.specialSchedules;
@@ -190,50 +196,79 @@ class _DisplayWindowState extends State<DisplayWindow> {
       return minyan;
     }).where((m) => m.time != null).toList();
 
-    // 1. בדיקה אם היום הוא יום מיוחד
-    SpecialSchedule? todaySpecial = specialSchedules.firstWhereOrNull(
-        (s) => s.date.day == now.day && s.date.month == now.month && s.date.year == now.year
-    );
+    final sunset = zmanimDateTimes[RelativeZman.sunset];
+    bool isNightTime = false;
+    if (sunset != null) {
+      final switchTime = sunset.add(const Duration(minutes: 20));
+      if (now.isAfter(switchTime)) {
+        isNightTime = true;
+      }
+    }
+    DateTime jewishCalcDate = now;
+    if (isNightTime) {
+      jewishCalcDate = now.add(const Duration(days: 1));
+    }
+    final jewishDate = JewishDate.fromDateTime(jewishCalcDate);
+    final int currentHebrewDay = jewishDate.getJewishDayOfMonth();
+    final int currentHebrewMonth = jewishDate.getJewishMonth();
+
+    SpecialSchedule? todaySpecial = specialSchedules.firstWhereOrNull((s) {
+      if (s.isHebrew) {
+        if (s.isRecurring) {
+          return s.hebrewMonth == currentHebrewMonth && s.hebrewDay == currentHebrewDay;
+        } else {
+          return s.hebrewMonth == currentHebrewMonth && s.hebrewDay == currentHebrewDay;
+        }
+      } else {
+        if (s.date == null) return false;
+        return s.date!.day == now.day && s.date!.month == now.month && s.date!.year == now.year;
+      }
+    });
 
     List<Minyan> todaysMinyanim;
     String? specialName;
 
     if (todaySpecial != null) {
-      // אם היום מיוחד - טוענים רק מניינים שמשויכים ליום הזה
       todaysMinyanim = processedMinyanim.where((m) => m.specialScheduleId == todaySpecial.id).toList();
       specialName = todaySpecial.name;
     } else {
-      // אם יום רגיל - לוגיקה רגילה
+      // --- לוגיקה חדשה המבוססת על הגדרות המשתמש ---
       final jewishCalendar = JewishCalendar.fromDateTime(now);
-      final sunsetToday = zmanimDateTimes[RelativeZman.sunset];
-      final chatzosToday = zmanimDateTimes[RelativeZman.chatzos];
       List<MinyanScheduleType> activeScheduleTypes = [];
 
       final isShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 7 || jewishCalendar.isYomTov();
       final isErevShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
       
       if (isShabbatOrYomTov) { 
-          if (sunsetToday != null && now.isAfter(sunsetToday)) {
+          // יום שבת/חג. נבדוק אם הגיע הזמן למוצ"ש
+          if (_isAfterTrigger(now, switchMotzaei, zmanimDateTimes)) {
+              // עברנו למוצ"ש
               activeScheduleTypes = [MinyanScheduleType.MOTZEI_SHABBAT];
           } else {
+              // עדיין שבת
               activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
           }
+          
           if (currentRoomSettings.showWeekdayMinyanimOnShabbat) {
             activeScheduleTypes.add(MinyanScheduleType.REGULAR);
           }
       } else if (isErevShabbatOrYomTov) { 
-          if (sunsetToday != null && now.isAfter(sunsetToday)) {
+          // ערב שבת/חג
+          if (_isAfterTrigger(now, switchShabbat, zmanimDateTimes)) {
+              // עברנו למצב שבת (למשל אחרי הדלקת נרות)
               activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
-          } else if (chatzosToday != null && now.isAfter(chatzosToday)) {
+          } else if (_isAfterTrigger(now, switchErev, zmanimDateTimes)) {
+              // עברנו למצב ערב שבת (למשל אחרי חצות)
               activeScheduleTypes = [MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.MOTZEI_SHABBAT]; 
           } else {
+              // עדיין יום חול רגיל (בוקר שישי)
               activeScheduleTypes = [MinyanScheduleType.REGULAR];
           }
       } else { 
+          // יום חול
           activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT]; 
       }
 
-      // סינון לפי סוג וגם וידוא שאין להם ID מיוחד (כדי לא לערבב מניינים מיוחדים בימים רגילים)
       todaysMinyanim = processedMinyanim.where((minyan) => 
           activeScheduleTypes.contains(minyan.scheduleType) && minyan.specialScheduleId == null
       ).toList();
@@ -246,11 +281,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     Map<MinyanScheduleType, Map<String, List<Minyan>>> categorizedMinyanim = {};
     
     for (final minyan in filteredMinyanim) {
-      // אם זה יום מיוחד, נקבץ הכל תחת "SPECIAL_DATE" או נשאיר את הסוג המקורי אם רוצים הפרדה
-      // אבל כרגע כל המניינים המיוחדים מסומנים כ-SPECIAL_DATE במודל אם הם נוצרו דרך הממשק החדש, 
-      // או ששמרנו את הסוג המקורי (REGULAR וכו') אבל עם special_schedule_id.
-      // כדי להציג אותם יפה, נשתמש ב-ScheduleType שלהם.
-      
       final scheduleType = todaySpecial != null ? MinyanScheduleType.SPECIAL_DATE : minyan.scheduleType;
       final prayerName = minyan.name.trim();
       
@@ -281,6 +311,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
         _panelMessages = categorizedMessages;
         _location = location;
         _specialDayName = specialName;
+        _switchErev = switchErev;
+        _switchShabbat = switchShabbat;
+        _switchMotzaei = switchMotzaei;
         _isLoading = false;
       });
     }
@@ -288,6 +321,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
     _updateNextMinyan(allMinyanim, location);
   }
 
+  // ... (dispose, _startNextMinyanTimer, _updateNextMinyan, _tick remain unchanged)
+  
+  // שאר הקוד נשאר זהה לקובץ המקורי...
   @override
   void dispose() {
     _nextMinyanTimer?.cancel();
@@ -302,7 +338,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
 
   void _updateNextMinyan(List<Minyan> allMinyanim, String location) {
     if (!mounted) return;
-    
     final foundMinyan = MinyanLogicHelper.findNextMinyan(allMinyanim, location);
     if (mounted && (foundMinyan?.minyan.id != _nextMinyan?.minyan.id)) {
       setState(() {
@@ -477,7 +512,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     List<MinyanScheduleType> orderedTypes;
     
     if (_specialDayName != null) {
-      // אם יום מיוחד, מציגים רק אותו
       orderedTypes = [MinyanScheduleType.SPECIAL_DATE];
     } else if (isShabbatOrChag && (_roomSettings?.showWeekdayMinyanimOnShabbat ?? false)) {
         orderedTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT, MinyanScheduleType.EREV_SHABBAT];
@@ -559,7 +593,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
         );
   }
 
-  // ... (שאר הפונקציות כמו _buildMessagePanel, _buildMessageLayout, _buildHeaderTitle נשארות זהות לקובץ המקורי)
   Widget _buildMessagePanel(List<Message> messages) {
     final theme = _effectiveTheme!;
     return GlassContainer(

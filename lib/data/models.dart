@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:synagogue_display/data/zmanim_helper.dart';
+import 'dart:convert';
 
 enum ClockPosition {
   header,
@@ -19,6 +20,7 @@ enum Nusach {
   EDOT_HAMIZRACH
 }
 
+// ... (Room class remains same)
 class Room {
   final int? id;
   final String name;
@@ -94,23 +96,76 @@ enum MinyanScheduleType {
   SHABBAT_DAY,
   MOTZEI_SHABBAT,
   EREV_SHABBAT,
-  SPECIAL_DATE // *** הוספתי את זה כדי למנוע את השגיאה ***
+  SPECIAL_DATE
 }
 
 enum MinyanTimeType { FIXED, RELATIVE }
 
+// --- מחלקה חדשה להגדרת זמני מעבר ---
+class ScheduleSwitchConfig {
+  final RelativeZman baseZman;
+  final int offsetMinutes;
+
+  ScheduleSwitchConfig({
+    required this.baseZman,
+    this.offsetMinutes = 0,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'baseZman': baseZman.name,
+      'offsetMinutes': offsetMinutes,
+    };
+  }
+
+  factory ScheduleSwitchConfig.fromMap(Map<String, dynamic> map) {
+    return ScheduleSwitchConfig(
+      baseZman: RelativeZman.values.firstWhere(
+          (e) => e.name == map['baseZman'], orElse: () => RelativeZman.sunset),
+      offsetMinutes: map['offsetMinutes'] ?? 0,
+    );
+  }
+  
+  String toJson() => jsonEncode(toMap());
+  
+  factory ScheduleSwitchConfig.fromJson(String source) => 
+      ScheduleSwitchConfig.fromMap(jsonDecode(source));
+      
+  // ברירות מחדל
+  static ScheduleSwitchConfig defaultErev() => ScheduleSwitchConfig(baseZman: RelativeZman.chatzos, offsetMinutes: 0);
+  static ScheduleSwitchConfig defaultShabbat() => ScheduleSwitchConfig(baseZman: RelativeZman.sunset, offsetMinutes: 0);
+  static ScheduleSwitchConfig defaultMotzaei() => ScheduleSwitchConfig(baseZman: RelativeZman.sunset, offsetMinutes: 0);
+}
+
+// ... (SpecialSchedule, Minyan, Message, DisplayTheme remain unchanged)
 class SpecialSchedule {
   final int? id;
   final String name;
-  final DateTime date;
+  final DateTime? date;
+  final bool isHebrew;
+  final bool isRecurring;
+  final int? hebrewDay;
+  final int? hebrewMonth;
 
-  SpecialSchedule({this.id, required this.name, required this.date});
+  SpecialSchedule({
+    this.id, 
+    required this.name, 
+    this.date,
+    this.isHebrew = false,
+    this.isRecurring = false,
+    this.hebrewDay,
+    this.hebrewMonth,
+  });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
-      'date': date.toIso8601String().substring(0, 10),
+      'date': date?.toIso8601String().substring(0, 10),
+      'is_hebrew': isHebrew ? 1 : 0,
+      'is_recurring': isRecurring ? 1 : 0,
+      'hebrew_day': hebrewDay,
+      'hebrew_month': hebrewMonth,
     };
   }
 
@@ -118,7 +173,11 @@ class SpecialSchedule {
     return SpecialSchedule(
       id: map['id'],
       name: map['name'],
-      date: DateTime.parse(map['date']),
+      date: map['date'] != null ? DateTime.parse(map['date']) : null,
+      isHebrew: map['is_hebrew'] == 1,
+      isRecurring: map['is_recurring'] == 1,
+      hebrewDay: map['hebrew_day'],
+      hebrewMonth: map['hebrew_month'],
     );
   }
 }

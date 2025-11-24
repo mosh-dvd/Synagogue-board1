@@ -31,13 +31,30 @@ class MinyanimManagementTab extends StatelessWidget {
     }
   }
 
-  // --- דיאלוג ניהול ימים מיוחדים ---
+  // פונקציית עזר להמרת מספר יום לאותיות
+  String _toHebrewDay(int? day) {
+    if (day == null) return '';
+    const days = [
+      '', 'א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ז׳', 'ח׳', 'ט׳', 'י׳',
+      'י״א', 'י״ב', 'י״ג', 'י״ד', 'ט״ו', 'ט״ז', 'י״ז', 'י״ח', 'י״ט', 'כ׳',
+      'כ״א', 'כ״ב', 'כ״ג', 'כ״ד', 'כ״ה', 'כ״ו', 'כ״ז', 'כ״ח', 'כ״ט', 'ל׳'
+    ];
+    if (day >= 1 && day < days.length) {
+      return days[day];
+    }
+    return day.toString();
+  }
+  
+  final Map<int, String> _hebrewMonthsMap = const {
+    1: 'ניסן', 2: 'אייר', 3: 'סיוון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
+    7: 'תשרי', 8: 'חשוון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב'
+  };
+
   Future<void> _showSpecialDaysManager(BuildContext context) {
     return showDialog(
       context: context,
       builder: (context) => const SpecialDaysManagerDialog(),
     ).then((_) {
-      // רענון הנתונים אחרי סגירת הדיאלוג
       Provider.of<DataProvider>(context, listen: false).fetchAllData();
     });
   }
@@ -126,7 +143,6 @@ class MinyanimManagementTab extends StatelessWidget {
     MinyanScheduleType selectedScheduleType = minyanToEdit?.scheduleType ?? MinyanScheduleType.REGULAR;
     int? selectedSpecialScheduleId = minyanToEdit?.specialScheduleId;
     
-    // קביעת הערך הראשוני ל-Dropdown המשולב
     String dropdownValue;
     if (selectedSpecialScheduleId != null) {
       dropdownValue = 'SPECIAL_$selectedSpecialScheduleId';
@@ -145,25 +161,30 @@ class MinyanimManagementTab extends StatelessWidget {
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               
-              // בניית רשימת האפשרויות ל-Dropdown
               List<DropdownMenuItem<String>> scheduleItems = [];
               
-              // הוספת סוגים רגילים
               for (var type in MinyanScheduleType.values) {
                 if (type != MinyanScheduleType.SPECIAL_DATE) {
                    scheduleItems.add(DropdownMenuItem(value: type.name, child: Text(_getScheduleTypeName(type))));
                 }
               }
               
-              // הוספת מפריד וכותרת אם יש ימים מיוחדים
               if (specialSchedules.isNotEmpty) {
                  scheduleItems.add(const DropdownMenuItem(enabled: false, value: 'DIVIDER', child: Divider()));
                  scheduleItems.add(const DropdownMenuItem(enabled: false, value: 'HEADER', child: Text('--- לוחות מיוחדים ---', style: TextStyle(fontSize: 12, color: Colors.grey))));
                  
                  for (var schedule in specialSchedules) {
+                    String dateText;
+                    if (schedule.isHebrew) {
+                      final monthName = _hebrewMonthsMap[schedule.hebrewMonth] ?? '';
+                      dateText = '${_toHebrewDay(schedule.hebrewDay)} ב$monthName ${schedule.isRecurring ? "(כל שנה)" : ""}';
+                    } else {
+                      dateText = schedule.date != null ? DateFormat('dd/MM').format(schedule.date!) : '';
+                    }
+                    
                     scheduleItems.add(DropdownMenuItem(
                       value: 'SPECIAL_${schedule.id}',
-                      child: Text('📅 ${schedule.name} (${DateFormat('dd/MM').format(schedule.date)})')
+                      child: Text('📅 ${schedule.name} ($dateText)')
                     ));
                  }
               }
@@ -188,7 +209,7 @@ class MinyanimManagementTab extends StatelessWidget {
                               dropdownValue = v;
                               if (v.startsWith('SPECIAL_')) {
                                 selectedSpecialScheduleId = int.parse(v.split('_')[1]);
-                                selectedScheduleType = MinyanScheduleType.SPECIAL_DATE; // סוג פנימי לסימון
+                                selectedScheduleType = MinyanScheduleType.SPECIAL_DATE; 
                               } else {
                                 selectedSpecialScheduleId = null;
                                 selectedScheduleType = MinyanScheduleType.values.firstWhere((e) => e.name == v);
@@ -228,14 +249,7 @@ class MinyanimManagementTab extends StatelessWidget {
                     relativeOffsetMinutes: selectedTimeType == MinyanTimeType.RELATIVE ? int.parse(offsetController.text) : null,
                   );
                   
-                  if (newMinyan.id == null) {
-                    await DatabaseHelper().insertMinyan(newMinyan);
-                  } else {
-                     // עבור עדכון - צריך להשתמש בפונקציה אחרת אם יש, או למחוק ולהכניס. 
-                     // כרגע insertMinyan עושה conflict replace אז זה בסדר לעדכון גם כן אם ה ID קיים
-                     await DatabaseHelper().insertMinyan(newMinyan);
-                  }
-                  
+                  await DatabaseHelper().insertMinyan(newMinyan);
                   Provider.of<DataProvider>(context, listen: false).fetchAllData();
                   Navigator.of(ctx).pop();
                 }
@@ -346,12 +360,10 @@ class MinyanimManagementTab extends StatelessWidget {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // כפתור עריכה
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () => _showAddOrEditMinyanDialog(context, rooms, minyan),
                       ),
-                      // כפתור מחיקה
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () async {
@@ -385,7 +397,32 @@ class SpecialDaysManagerDialog extends StatefulWidget {
 
 class _SpecialDaysManagerDialogState extends State<SpecialDaysManagerDialog> {
   final TextEditingController _nameController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
+  
+  bool _isHebrew = true; 
+  bool _isRecurring = true; 
+  
+  DateTime _selectedGregorianDate = DateTime.now();
+  
+  int _selectedHebrewMonth = 1; // 1 = Nissan
+  int _selectedHebrewDay = 1;
+
+  final Map<int, String> _hebrewMonths = {
+    1: 'ניסן', 2: 'אייר', 3: 'סיוון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
+    7: 'תשרי', 8: 'חשוון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב'
+  };
+
+  // פונקציית עזר להמרת יום לאותיות
+  String _getHebrewDay(int day) {
+    const letters = [
+      '', 'א\'', 'ב\'', 'ג\'', 'ד\'', 'ה\'', 'ו\'', 'ז\'', 'ח\'', 'ט\'', 'י\'',
+      'י"א', 'י"ב', 'י"ג', 'י"ד', 'ט"ו', 'ט"ז', 'י"ז', 'י"ח', 'י"ט', 'כ\'',
+      'כ"א', 'כ"ב', 'כ"ג', 'כ"ד', 'כ"ה', 'כ"ו', 'כ"ז', 'כ"ח', 'כ"ט', 'ל\''
+    ];
+    if (day >= 1 && day < letters.length) {
+      return letters[day];
+    }
+    return '$day';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -393,67 +430,132 @@ class _SpecialDaysManagerDialogState extends State<SpecialDaysManagerDialog> {
       builder: (context, dataProvider, child) {
         return AlertDialog(
           title: const Text('ניהול ימים מיוחדים'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // טופס הוספה
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'שם היום (למשל: פורים)'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'שם היום (למשל: פורים, יום העצמאות)'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text('סוג תאריך: '),
+                      Radio<bool>(
+                        value: true, 
+                        groupValue: _isHebrew, 
+                        onChanged: (v) => setState(() => _isHebrew = true)
                       ),
+                      const Text('עברי'),
+                      Radio<bool>(
+                        value: false, 
+                        groupValue: _isHebrew, 
+                        onChanged: (v) => setState(() => _isHebrew = false)
+                      ),
+                      const Text('לועזי'),
+                    ],
+                  ),
+                  
+                  if (_isHebrew) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            decoration: const InputDecoration(labelText: 'חודש'),
+                            value: _selectedHebrewMonth,
+                            items: _hebrewMonths.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                            onChanged: (v) => setState(() => _selectedHebrewMonth = v!),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            decoration: const InputDecoration(labelText: 'יום'),
+                            value: _selectedHebrewDay,
+                            items: List.generate(30, (i) => i + 1).map((day) => DropdownMenuItem(
+                              value: day,
+                              child: Text(_getHebrewDay(day)) // שימוש בפונקציה להצגת אותיות
+                            )).toList(),
+                            onChanged: (v) => setState(() => _selectedHebrewDay = v!),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: TextButton.icon(
+                    CheckboxListTile(
+                      title: const Text('חוזר בכל שנה'),
+                      value: _isRecurring,
+                      onChanged: (v) => setState(() => _isRecurring = v!),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ] else ...[
+                     TextButton.icon(
                         icon: const Icon(Icons.calendar_month),
-                        label: Text(DateFormat('dd/MM').format(_selectedDate)),
+                        label: Text('תאריך: ${DateFormat('dd/MM/yyyy').format(_selectedGregorianDate)}'),
                         onPressed: () async {
                           final picked = await showDatePicker(
                             context: context,
-                            initialDate: _selectedDate,
+                            initialDate: _selectedGregorianDate,
                             firstDate: DateTime.now().subtract(const Duration(days: 365)),
                             lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
                           );
                           if (picked != null) {
-                            setState(() => _selectedDate = picked);
+                            setState(() => _selectedGregorianDate = picked);
                           }
                         },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle, color: Colors.green),
+                  ],
+
+                  const SizedBox(height: 16),
+                  Center(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('הוסף יום מיוחד'),
                       onPressed: () async {
                         if (_nameController.text.isNotEmpty) {
                           await DatabaseHelper().insertSpecialSchedule(
-                            SpecialSchedule(name: _nameController.text, date: _selectedDate)
+                            SpecialSchedule(
+                              name: _nameController.text, 
+                              // *** התיקון כאן: שליחת תאריך פיקטיבי במקרה עברי ***
+                              date: _isHebrew ? DateTime(2000, 1, 1) : _selectedGregorianDate,
+                              isHebrew: _isHebrew,
+                              isRecurring: _isHebrew ? _isRecurring : false, 
+                              hebrewDay: _isHebrew ? _selectedHebrewDay : null,
+                              hebrewMonth: _isHebrew ? _selectedHebrewMonth : null,
+                            )
                           );
                           _nameController.clear();
                           Provider.of<DataProvider>(context, listen: false).fetchAllData();
                         }
                       },
-                    )
-                  ],
-                ),
-                const Divider(height: 30),
-                const Text('ימים קיימים:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                // רשימת ימים קיימים
-                Flexible(
-                  child: ListView.builder(
+                    ),
+                  ),
+                  
+                  const Divider(height: 30),
+                  const Text('ימים קיימים:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  
+                  ListView.builder(
                     shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: dataProvider.specialSchedules.length,
                     itemBuilder: (context, index) {
                       final schedule = dataProvider.specialSchedules[index];
+                      String details;
+                      if (schedule.isHebrew) {
+                         final monthName = _hebrewMonths[schedule.hebrewMonth] ?? '';
+                         details = '${_getHebrewDay(schedule.hebrewDay!)} ב$monthName ${schedule.isRecurring ? "(כל שנה)" : ""}';
+                      } else {
+                         details = schedule.date != null ? DateFormat('dd/MM/yyyy').format(schedule.date!) : '';
+                      }
+
                       return ListTile(
                         title: Text(schedule.name),
-                        subtitle: Text(DateFormat('dd/MM/yyyy').format(schedule.date)),
+                        subtitle: Text(details),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () async {
@@ -464,8 +566,8 @@ class _SpecialDaysManagerDialogState extends State<SpecialDaysManagerDialog> {
                       );
                     },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
