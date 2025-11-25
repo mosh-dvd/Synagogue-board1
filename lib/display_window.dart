@@ -64,7 +64,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
   Timer? _nextMinyanTimer;
   String _nextMinyanCountdown = "";
   
-  // הגדרות מעבר
   ScheduleSwitchConfig? _switchErev;
   ScheduleSwitchConfig? _switchShabbat;
   ScheduleSwitchConfig? _switchMotzaei;
@@ -136,10 +135,9 @@ class _DisplayWindowState extends State<DisplayWindow> {
     );
   }
   
-  // פונקציית עזר לבדיקה אם הגיע הזמן
   bool _isAfterTrigger(DateTime now, ScheduleSwitchConfig config, Map<RelativeZman, DateTime?> zmanim) {
     final baseTime = zmanim[config.baseZman];
-    if (baseTime == null) return false; // אם אין זמן, לא עוברים
+    if (baseTime == null) return false; 
     final triggerTime = baseTime.add(Duration(minutes: config.offsetMinutes));
     return now.isAfter(triggerTime);
   }
@@ -154,7 +152,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     final location = data['location'] as String;
     final theme = DisplayTheme.fromMap(data['theme']);
     
-    // קריאת הגדרות המעבר מהפיילוד
     final switchErev = data['switch_erev'] != null ? ScheduleSwitchConfig.fromMap(data['switch_erev']) : ScheduleSwitchConfig.defaultErev();
     final switchShabbat = data['switch_shabbat'] != null ? ScheduleSwitchConfig.fromMap(data['switch_shabbat']) : ScheduleSwitchConfig.defaultShabbat();
     final switchMotzaei = data['switch_motzaei'] != null ? ScheduleSwitchConfig.fromMap(data['switch_motzaei']) : ScheduleSwitchConfig.defaultMotzaei();
@@ -232,7 +229,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
       todaysMinyanim = processedMinyanim.where((m) => m.specialScheduleId == todaySpecial.id).toList();
       specialName = todaySpecial.name;
     } else {
-      // --- לוגיקה חדשה המבוססת על הגדרות המשתמש ---
       final jewishCalendar = JewishCalendar.fromDateTime(now);
       List<MinyanScheduleType> activeScheduleTypes = [];
 
@@ -240,33 +236,33 @@ class _DisplayWindowState extends State<DisplayWindow> {
       final isErevShabbatOrYomTov = jewishCalendar.getDayOfWeek() == 6 || jewishCalendar.isErevYomTov();
       
       if (isShabbatOrYomTov) { 
-          // יום שבת/חג. נבדוק אם הגיע הזמן למוצ"ש
+          // שבת או יום טוב
           if (_isAfterTrigger(now, switchMotzaei, zmanimDateTimes)) {
-              // עברנו למוצ"ש
+              // אחרי הטריגר למוצ"ש - מציגים מוצ"ש (ואולי חול אם מוגדר)
               activeScheduleTypes = [MinyanScheduleType.MOTZEI_SHABBAT];
+              if (currentRoomSettings.showWeekdayMinyanimOnShabbat) {
+                activeScheduleTypes.add(MinyanScheduleType.REGULAR);
+              }
           } else {
-              // עדיין שבת
+              // עדיין שבת - מציגים שבת וגם את מוצ"ש (כדי שיראו מתי מעריב)
               activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
-          }
-          
-          if (currentRoomSettings.showWeekdayMinyanimOnShabbat) {
-            activeScheduleTypes.add(MinyanScheduleType.REGULAR);
           }
       } else if (isErevShabbatOrYomTov) { 
-          // ערב שבת/חג
+          // ערב שבת
           if (_isAfterTrigger(now, switchShabbat, zmanimDateTimes)) {
-              // עברנו למצב שבת (למשל אחרי הדלקת נרות)
+              // נכנסה שבת (לפי הטריגר) - מציגים שבת
               activeScheduleTypes = [MinyanScheduleType.SHABBAT_DAY, MinyanScheduleType.MOTZEI_SHABBAT];
           } else if (_isAfterTrigger(now, switchErev, zmanimDateTimes)) {
-              // עברנו למצב ערב שבת (למשל אחרי חצות)
+              // מצב ערב שבת (מנחה גדולה וכו')
               activeScheduleTypes = [MinyanScheduleType.EREV_SHABBAT, MinyanScheduleType.MOTZEI_SHABBAT]; 
           } else {
-              // עדיין יום חול רגיל (בוקר שישי)
+              // בוקר יום שישי
               activeScheduleTypes = [MinyanScheduleType.REGULAR];
           }
       } else { 
-          // יום חול
-          activeScheduleTypes = [MinyanScheduleType.REGULAR, MinyanScheduleType.MOTZEI_SHABBAT]; 
+          // יום חול רגיל (ראשון-חמישי)
+          // *** תיקון: מורידים את MOTZEI_SHABBAT מכאן ***
+          activeScheduleTypes = [MinyanScheduleType.REGULAR]; 
       }
 
       todaysMinyanim = processedMinyanim.where((minyan) => 
@@ -321,9 +317,6 @@ class _DisplayWindowState extends State<DisplayWindow> {
     _updateNextMinyan(allMinyanim, location);
   }
 
-  // ... (dispose, _startNextMinyanTimer, _updateNextMinyan, _tick remain unchanged)
-  
-  // שאר הקוד נשאר זהה לקובץ המקורי...
   @override
   void dispose() {
     _nextMinyanTimer?.cancel();
